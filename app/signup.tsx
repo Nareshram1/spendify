@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Pressable } from '
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabaseClient';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 const SignUp = () => {
   const [fullName, setFullName] = useState('');
@@ -32,7 +32,10 @@ const SignUp = () => {
     if (error) {
       alert(error.message);
     } else {
+      alert('check mail to confirm and cum back')
+      router.replace('/')
       // Navigate to login screen
+      
     }
   };
 

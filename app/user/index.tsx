@@ -1,10 +1,10 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal, Alert } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView,ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { supabase } from '../../utils/supabaseClient'; // Ensure you have a supabaseClient.js file for your Supabase instance
-import { getValueFor } from '../../utils/secureStore'; // Assuming you have a secure store setup
+import { supabase } from '../../utils/supabaseClient'; 
+import { getValueFor ,deleteValueFor} from '../../utils/secureStore'; 
 import { router } from 'expo-router';
 
 type Category = {
@@ -14,7 +14,7 @@ type Category = {
 };
 
 const User = () => {
-  const snapPoints = useMemo(() => ['70%'], []);
+  const snapPoints = useMemo(() => ['70%','76%'], []);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -22,6 +22,8 @@ const User = () => {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
   const [userID, setUserID] = useState('');
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   useEffect(() => {
     const checkLoggedIn = async () => {
@@ -109,6 +111,23 @@ const User = () => {
     setIsBottomSheetOpen(false);
   };
 
+  const handleDeleteCategory = async () => {
+    if (categoryToDelete) {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryToDelete.id);
+
+      if (error) {
+        alert(error.message);
+      } else {
+        setCategories(categories.filter(category => category.id !== categoryToDelete.id));
+        setCategoryToDelete(null);
+        setIsModalVisible(false);
+      }
+    }
+  };
+
   const renderCategoryItem = ({ item }: { item: Category }) => (
     <TouchableOpacity
       style={[
@@ -116,28 +135,44 @@ const User = () => {
         selectedCategory === item.id && styles.selectedCategoryPill,
       ]}
       onPress={() => setSelectedCategory(item.id)}
+      onLongPress={() => {
+        setCategoryToDelete(item);
+        setIsModalVisible(true);
+      }}
     >
       <Text style={styles.categoryText}>{item.name}</Text>
     </TouchableOpacity>
   );
 
+  const handleLogOut = async () => {
+    await deleteValueFor('user_id');
+    await deleteValueFor('user_email');
+    router.replace('/')
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       <Text style={styles.mainText}>ANALYTICS</Text>
+      <Pressable onPress={() => { handleLogOut() }}>
+        <Text style={styles.mainText}>LOG OUT</Text>
+      </Pressable>
 
       <GestureHandlerRootView>
         <BottomSheet
           ref={bottomSheetRef}
-          backgroundStyle={{ backgroundColor: 'gray' }}
+          backgroundStyle={{ backgroundColor: '#D4D4D4' }}
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           index={-1}
           style={styles.bottomSheetStyle}
           onChange={(index) => setIsBottomSheetOpen(index > -1)}
         >
-          <Text style={styles.mainText}>Add Expense</Text>
+          <Text style={styles.mainTextBS}>Add Expense</Text>
           
+          <View style={{flex:1,justifyContent:'space-evenly'}}>
+
+          <ScrollView horizontal={true} style={{maxHeight:100,padding:10}}>
           <View style={styles.categoryList}>
           <FlatList
             data={categories}
@@ -149,7 +184,7 @@ const User = () => {
             
           />
           </View>
-
+          </ScrollView>
           <View style={styles.newCategoryContainer}>
             <TextInput
               style={styles.input1}
@@ -170,18 +205,36 @@ const User = () => {
             value={amount}
             onChangeText={setAmount}
           />
+
+          </View>
+
           <TouchableOpacity style={styles.addExpenseButton} onPress={handleAddExpense}>
             <Text style={styles.buttonText}>Add Expense</Text>
           </TouchableOpacity>
         </BottomSheet>
       </GestureHandlerRootView>
 
-
       {!isBottomSheetOpen && (
         <Pressable style={styles.AddExpenseButton} onPress={handleOpen}>
           <Text style={styles.buttonText}>Add New Expense</Text>
         </Pressable>
       )}
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>Are you sure you want to delete this category?</Text>
+            <View style={styles.modalButtons}>
+              <Button title="DELETE" onPress={handleDeleteCategory} />
+              <Button title="CANCEL" onPress={() => setIsModalVisible(false)} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -218,24 +271,22 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     alignSelf:'center'
   },
-
+  mainTextBS: {
+    color: 'black',
+    fontSize: 30,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    alignSelf:'center'
+  },
   categoryList: {
-    // backgroundColor:'red',
-    flex:1,
-    maxHeight:178,
-    flexWrap:'wrap',
-    justifyContent:'space-evenly',
-    paddingTop:10,
-    paddingHorizontal:0
+
   },
   categoryPill: {
-    
     borderRadius: 20,
     backgroundColor: '#706098',
     padding: 20,
     maxHeight:60,
     margin:5
-
   },
   selectedCategoryPill: {
     backgroundColor: '#0ac7b8',
@@ -252,7 +303,6 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'space-between',
     marginVertical: 10,
-
   },
   input2: {
     backgroundColor: '#706098',
@@ -261,8 +311,7 @@ const styles = StyleSheet.create({
     color: 'white',
     letterSpacing: 2,
     fontSize: 16,
-    height:'20%'
-
+    height:'40%'
   },
   input1: {
     backgroundColor: '#706098',
@@ -271,7 +320,8 @@ const styles = StyleSheet.create({
     color: 'white',
     letterSpacing: 2,
     fontSize: 16,
-    width:'80%'
+    width:'80%',
+    height:80
   },
   addCategoryButton: {
     backgroundColor: '#0ac7b8',
@@ -292,6 +342,29 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginVertical: 10,
+    width: '100%',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalText: {
+    marginBottom: 20,
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
   },
 });
