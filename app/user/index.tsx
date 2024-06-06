@@ -2,11 +2,16 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal, Alert } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView,ScrollView } from 'react-native-gesture-handler';
+// import { Drawer } from 'expo-router/drawer';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../utils/supabaseClient'; 
 import { getValueFor ,deleteValueFor} from '../../utils/secureStore'; 
 import { router } from 'expo-router';
+// import { Drawer } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
 
+import Analytics from './analytics';
 type Category = {
   id: number;
   name: string;
@@ -14,7 +19,7 @@ type Category = {
 };
 
 const User = () => {
-  const snapPoints = useMemo(() => ['70%','76%'], []);
+  const snapPoints = useMemo(() => ['69%'], []);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -23,8 +28,10 @@ const User = () => {
   const [amount, setAmount] = useState('');
   const [userID, setUserID] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [refreshAnalytics, setRefreshAnalytics] = useState<Boolean>(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-
+  // const [active, setActive] = React.useState('');
   useEffect(() => {
     const checkLoggedIn = async () => {
       const storedEmail = await getValueFor('user_email');
@@ -97,7 +104,8 @@ const User = () => {
       alert('Expense added successfully');
       setAmount('');
       setSelectedCategory(null);
-      handleClose();
+      // handleClose(); Issue 2: Fixed
+      setRefreshAnalytics(!refreshAnalytics);
     }
   };
 
@@ -124,6 +132,7 @@ const User = () => {
         setCategories(categories.filter(category => category.id !== categoryToDelete.id));
         setCategoryToDelete(null);
         setIsModalVisible(false);
+        
       }
     }
   };
@@ -153,11 +162,19 @@ const User = () => {
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
-      <Text style={styles.mainText}>ANALYTICS</Text>
-      <Pressable onPress={() => { handleLogOut() }}>
-        <Text style={styles.mainText}>LOG OUT</Text>
-      </Pressable>
-
+  
+      <View style={styles.AppBar}>
+        <Text style={styles.AppNameText}>Spendify</Text>
+        <Pressable onPress={() => { setProfileModalVisible(true) }}>
+          <Avatar.Image size={40} source={require('../../assets/images/batman.png')} />
+        </Pressable>
+      </View>
+  
+      {
+      !isBottomSheetOpen &&
+      <Analytics refresh={refreshAnalytics}/>
+      }
+  
       <GestureHandlerRootView>
         <BottomSheet
           ref={bottomSheetRef}
@@ -165,61 +182,62 @@ const User = () => {
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           index={-1}
-          style={styles.bottomSheetStyle}
+          style={[styles.bottomSheetStyle, { zIndex: 999 }]} // Set a high zIndex value
           onChange={(index) => setIsBottomSheetOpen(index > -1)}
         >
           <Text style={styles.mainTextBS}>Add Expense</Text>
-          
-          <View style={{flex:1,justifyContent:'space-evenly'}}>
-
-          <ScrollView horizontal={true} style={{maxHeight:100,padding:10}}>
-          <View style={styles.categoryList}>
-          <FlatList
-            data={categories}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id.toString()}
-            horizontal
-            showsHorizontalScrollIndicator={true}
-            contentContainerStyle={styles.categoryList}
-            
-          />
-          </View>
-          </ScrollView>
-          <View style={styles.newCategoryContainer}>
+  
+          <View style={{ flex: 1, justifyContent: 'space-evenly' }}>
+  
+            <ScrollView horizontal={true} style={{ maxHeight: 100, padding: 10 }}>
+              <View style={styles.categoryList}>
+                <FlatList
+                  data={categories}
+                  renderItem={renderCategoryItem}
+                  keyExtractor={(item) => item.id.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={true}
+                  contentContainerStyle={styles.categoryList}
+  
+                />
+              </View>
+            </ScrollView>
+            <View style={styles.newCategoryContainer}>
+              <TextInput
+                style={styles.input1}
+                placeholder="New Category"
+                placeholderTextColor="white"
+                value={newCategory}
+                onChangeText={setNewCategory}
+              />
+              <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
+                <Text style={styles.addCategoryButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
             <TextInput
-              style={styles.input1}
-              placeholder="New Category"
+              style={styles.input2}
+              placeholder="Amount"
               placeholderTextColor="white"
-              value={newCategory}
-              onChangeText={setNewCategory}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
             />
-            <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
-              <Text style={styles.addCategoryButtonText}>+</Text>
-            </TouchableOpacity>
+  
           </View>
-          <TextInput
-            style={styles.input2}
-            placeholder="Amount"
-            placeholderTextColor="white"
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-          />
-
-          </View>
-
+  
           <TouchableOpacity style={styles.addExpenseButton} onPress={handleAddExpense}>
             <Text style={styles.buttonText}>Add Expense</Text>
           </TouchableOpacity>
         </BottomSheet>
       </GestureHandlerRootView>
-
+  
       {!isBottomSheetOpen && (
         <Pressable style={styles.AddExpenseButton} onPress={handleOpen}>
           <Text style={styles.buttonText}>Add New Expense</Text>
         </Pressable>
       )}
 
+      {/* Modals */}
       <Modal
         visible={isModalVisible}
         transparent={true}
@@ -229,14 +247,50 @@ const User = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalText}>Are you sure you want to delete this category?</Text>
             <View style={styles.modalButtons}>
-              <Button title="DELETE" onPress={handleDeleteCategory} />
+              <Button title="DELETE" onPress={handleDeleteCategory} color={'red'} />
               <Button title="CANCEL" onPress={() => setIsModalVisible(false)} />
             </View>
           </View>
         </View>
       </Modal>
+  
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={profileModalVisible}
+        onRequestClose={() => {
+          setProfileModalVisible(!profileModalVisible);
+        }}
+      >
+  
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Pressable onPress={() => { setProfileModalVisible(false) }} style={{ alignSelf: 'flex-end' }}>
+              <Ionicons name="close" size={32} color="white" style={styles.icon} />
+            </Pressable>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => {
+                // handle change password
+              }}
+            >
+              <Text style={styles.textStyle}>Change Password</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => {
+                // handle logout
+                handleLogOut()
+              }}
+            >
+              <Text style={styles.textStyle}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
+  
 };
 
 export default User;
@@ -245,6 +299,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#171223',
+  },
+  icon: {
+    marginHorizontal: 10,
+    color:'black',
+    alignSelf:'flex-end'
+  },
+  AppNameText:{
+      color:'white',
+      fontSize:30,
+      fontWeight:'700',
+      fontFamily:'Kalam',
+      letterSpacing:2,
+  },
+  AppBar:{
+    flex:1,
+    // backgroundColor:'red',
+    flexDirection:'row',
+    maxHeight:'8%',
+    alignItems:'center',
+    justifyContent:'space-between',
+    padding:8
   },
   AddExpenseButton: {
     backgroundColor: '#0ac7b8',
@@ -263,6 +338,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetStyle: {
     padding: 20,
+    zIndex:999
   },
   mainText: {
     color: 'white',
@@ -366,5 +442,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+  },
+
+
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    marginVertical: 10,
+    backgroundColor:'#706098'
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize:20
   },
 });

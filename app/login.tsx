@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: 'bold',
     alignSelf: 'flex-start',
-    letterSpacing: 2,
+    letterSpacing: 2
   },
   secondaryText: {
     color: 'gray',

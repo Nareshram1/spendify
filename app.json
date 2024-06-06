@@ -29,7 +29,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          "fonts": ["./assets/fonts/Kalam-Regular.ttf"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

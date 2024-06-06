@@ -6,7 +6,7 @@ import { Link, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 const SignUp = () => {
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  // const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,18 +16,17 @@ const SignUp = () => {
       alert('Passwords do not match');
       return;
     }
-    console.log("edeging")
+    // console.log("edeging")
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName,
-          phone: phone,
+          full_name: fullName
         },
       },
     });
-    console.log("cumming1")
+    // console.log("cumming1")
 
     if (error) {
       alert(error.message);
@@ -56,7 +55,7 @@ const SignUp = () => {
             value={fullName}
           />
         </View>
-        <View style={styles.inputContainer}>
+        {/* <View style={styles.inputContainer}>
           <Ionicons name="call" size={24} color="white" style={styles.icon} />
           <TextInput
             style={styles.input}
@@ -65,7 +64,7 @@ const SignUp = () => {
             onChangeText={setPhone}
             value={phone}
           />
-        </View>
+        </View> */}
         <View style={styles.inputContainer}>
           <Ionicons name="mail" size={24} color="white" style={styles.icon} />
           <TextInput
