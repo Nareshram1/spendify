@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Modal, Text, Pressable } from 'react-native';
-import { Button, DataTable } from 'react-native-paper';
+import { View, Modal, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import DatePicker from 'react-native-modern-datepicker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/utils/supabaseClient';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
-import { StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AnalyticsProp {
@@ -27,13 +25,11 @@ interface FetchExpensesForTodayResult {
 const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
   const [openModal, setOpenModal] = useState(false);
   const [userID, setUserID] = useState<string>('');
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [total, setTotal] = useState<number>(0);
-  const [itemsPerPage] = useState<number>(4); // Number of items per page
-  const [currentPage, setCurrentPage] = useState<number>(0);
-  const [numberOfPages, setNumberOfPages] = useState<number>(0);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [monthExpense,setMonthExpense] = useState<Number>(0)
+  const [monthExpense, setMonthExpense] = useState<Number>(0);
+
   useEffect(() => {
     const getUserID = async () => {
       const storedEmail = await getValueFor('user_email');
@@ -53,19 +49,14 @@ const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
     fetchData();
   }, [userID, refresh, date]);
 
-  useEffect(() => {
-    const totalPages = Math.ceil(expenses.length / itemsPerPage);
-    setNumberOfPages(totalPages);
-  }, [expenses, itemsPerPage]);
-
   const fetchData = async () => {
     if (userID && date) {
       // Day
       const result: FetchExpensesForTodayResult = await fetchExpensesForDate(date);
       setExpenses(result.expenses);
       setTotal(result.total);
-      //Month
-      const totalMonthExpense:Number = await fetchTotalExpenseForMonth();
+      // Month
+      const totalMonthExpense: Number = await fetchTotalExpenseForMonth();
       setMonthExpense(totalMonthExpense);
     }
   };
@@ -98,6 +89,7 @@ const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
       return { expenses, total };
     }
   };
+
   const fetchTotalExpenseForMonth = async (): Promise<number> => {
     if (!userID) router.replace('/');
 
@@ -120,34 +112,24 @@ const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
       return total;
     }
   };
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const fromIndex = currentPage * itemsPerPage;
-  const toIndex = (currentPage + 1) * itemsPerPage;
-
-  const paginatedExpenses = expenses.slice(fromIndex, toIndex);
 
   const handleDateChange = (selectedDate: string) => {
-    // setOpenModal(false);
     setDate(selectedDate);
   };
 
   const handleDataPickerModal = () => {
-    console.log('Modal should open');
     setOpenModal(true);
-    console.log('Modal open state after setting to true:', openModal);
   };
-
 
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <Pressable onPress={()=>{handleDataPickerModal()}} style={styles.datePickerContainer}>
-          <Text style={{color:'white',fontSize:16,fontWeight:'600'}}>This Month: ₹{monthExpense.toString()}</Text>
-          <Ionicons name="calendar" size={24} color="white"  />
-        </Pressable>
+        <View style={styles.header}>
+          <Pressable onPress={handleDataPickerModal} style={styles.datePickerContainer}>
+            <Text style={styles.monthExpenseText}>This Month: ₹{monthExpense.toString()}</Text>
+            <Ionicons name="calendar" size={24} color="white" />
+          </Pressable>
+        </View>
 
         <Modal visible={openModal} transparent={true} animationType="slide">
           <View style={styles.modalContainer}>
@@ -158,34 +140,41 @@ const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
                 selected={date}
               />
               <Pressable onPress={() => setOpenModal(false)} style={styles.closeButton}>
-                <Text style={{fontWeight:'500',fontSize:17,letterSpacing:2}}>Close</Text>
+                <Text style={styles.closeButtonText}>Close</Text>
               </Pressable>
             </View>
           </View>
         </Modal>
 
-        <DataTable style={{ backgroundColor: '#D4D4D4' }}>
-          <DataTable.Header>
-            <DataTable.Title>Amount</DataTable.Title>
-            <DataTable.Title>Category</DataTable.Title>
-          </DataTable.Header>
-
-          {paginatedExpenses.map((expense, index) => (
-            <DataTable.Row key={index}>
-              <DataTable.Cell>${expense.amount}</DataTable.Cell>
-              <DataTable.Cell>{expense.category ?? 'Unknown'}</DataTable.Cell>
-            </DataTable.Row>
-          ))}
-
-          <DataTable.Pagination
-            label={`Total: ₹${total.toFixed(0)}`}
-            numberOfItemsPerPage={itemsPerPage}
-            onPageChange={handlePageChange}
-            page={currentPage}
-            numberOfPages={numberOfPages}
-            selectPageDropdownLabel={'Rows per page'}
-          />
-        </DataTable>
+        <FlatList
+          data={expenses}
+          keyExtractor={(item, index) => index.toString()}
+          ListHeaderComponent={() => (
+            <>
+            {total>0 &&
+              <View style={styles.listHeader}>
+              <Text style={styles.listHeaderText}>Amount</Text>
+              <Text style={styles.listHeaderText}>Category</Text>
+            </View>
+            }
+            </>
+          )}
+          renderItem={({ item }) => (
+            <View style={styles.listItem}>
+              <Text style={styles.itemText}>₹{item.amount}</Text>
+              <Text style={styles.itemText}>{item.category ?? 'Unknown'}</Text>
+            </View>
+          )}
+          ListFooterComponent={() => (
+            <View style={styles.footer}>
+              {total>0?
+              <Text style={styles.footerText}>Total: ₹{total.toFixed(0)}</Text>
+              :
+              <Text style={styles.footerText}>No Expense on this day</Text>
+            }
+            </View>
+          )}
+        />
       </View>
     </SafeAreaProvider>
   );
@@ -194,9 +183,14 @@ const Analytics: React.FC<AnalyticsProp> = ({ refresh }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    marginTop:45
   },
   modalContainer: {
     flex: 1,
@@ -207,27 +201,67 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginHorizontal: 20,
     borderRadius: 10,
-    padding: 20,
+    paddingBottom:10
   },
   closeButton: {
-    backgroundColor:'#0ac7b8',
-    // backgroundColor:'red',
-    padding:15,
-    alignItems:'center',
-    marginHorizontal:'auto',
-    borderRadius:25
+    backgroundColor: '#0ac7b8',
+    padding: 15,
+    alignItems: 'center',
+    borderRadius: 25,
+    marginTop:20,
+    width:'50%',
+    alignSelf:'center'
   },
-
+  closeButtonText: {
+    fontWeight: '500',
+    fontSize: 17,
+    letterSpacing: 2,
+  },
   datePickerContainer: {
-    width: '100%',
-    margin: 1,
-    marginTop:100,
-    // backgroundColor:'red',
-    flex:1,
-    flexDirection:'row',
-    alignItems:'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent:'space-between',
-    
+    width:'100%'
+  },
+  monthExpenseText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '600',
+
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    backgroundColor: '#D4D4D4',
+  },
+  listHeaderText: {
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    fontSize:16
+  },
+  listItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    backgroundColor:'white'
+  },
+  itemText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize:15
+  },
+  footer: {
+    paddingVertical: 8,
+    backgroundColor: '#D4D4D4',
+  },
+  footerText: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize:15
   },
 });
 
