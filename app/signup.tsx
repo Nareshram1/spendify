@@ -16,7 +16,6 @@ const SignUp = () => {
       alert('Passwords do not match');
       return;
     }
-    // console.log("edeging")
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -26,7 +25,6 @@ const SignUp = () => {
         },
       },
     });
-    // console.log("cumming1")
 
     if (error) {
       alert(error.message);
@@ -34,7 +32,6 @@ const SignUp = () => {
       alert('check mail to confirm and cum back')
       router.replace('/')
       // Navigate to login screen
-      
     }
   };
 
@@ -55,16 +52,6 @@ const SignUp = () => {
             value={fullName}
           />
         </View>
-        {/* <View style={styles.inputContainer}>
-          <Ionicons name="call" size={24} color="white" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Phone"
-            placeholderTextColor="white"
-            onChangeText={setPhone}
-            value={phone}
-          />
-        </View> */}
         <View style={styles.inputContainer}>
           <Ionicons name="mail" size={24} color="white" style={styles.icon} />
           <TextInput
