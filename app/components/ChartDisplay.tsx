@@ -21,7 +21,7 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
               <Text style={styles.chartTitle}>Category wise</Text>
               <PieChart
                 data={data.pieData}
-                width={Dimensions.get('window').width - 16}
+                width={Dimensions.get('window').width - 6}
                 height={220}
                 chartConfig={{
                   backgroundColor: '#171223',
@@ -32,7 +32,7 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
                 }}
                 accessor="amount"
                 backgroundColor="transparent"
-                paddingLeft="15"
+                paddingLeft="10"
                 absolute
               />
               <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(2)}</Text>

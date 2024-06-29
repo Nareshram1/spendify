@@ -182,7 +182,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={handleDataPickerModal} style={styles.datePickerContainer}>
-            <Text style={styles.monthExpenseText}>This Month: ₹{monthExpense.toString()}</Text>
+            <Text style={styles.monthExpenseText}>This Month: ₹{monthExpense.toFixed(2).toString()}</Text>
             <Ionicons name="calendar" size={24} color="white" />
           </Pressable>
         </View>
