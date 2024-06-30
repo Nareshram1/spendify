@@ -131,14 +131,15 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       alert('Please enter an amount and select a category');
       return;
     }
+    // const formatedAmount=
     console.log(date,new Date().toISOString().split('T')[0].replaceAll('-','/'))
     const istOffset = 5.5 * 60 * 60000;
     console.log("DT DB ",date);
     const sendData=(date!=new Date(new Date().getTime() + istOffset).toISOString().split('T')[0].replaceAll('-','/'))?
-    { amount: parseFloat(amount), category_id: selectedCategory, user_id: userID,expense_date: `${date}T10:00:00.000Z`,expense_method:paymentMethod,created_at: `${date}T10:00:00.000Z`}
+    { amount: parseFloat(amount).toFixed(2), category_id: selectedCategory, user_id: userID,expense_date: `${date}T10:00:00.000Z`,expense_method:paymentMethod,created_at: `${date}T10:00:00.000Z`}
     // To Ask time
     :
-    { amount: parseFloat(amount), category_id: selectedCategory, user_id: userID,expense_method:paymentMethod,expense_date:date,created_at:date}
+    { amount: parseFloat(amount).toFixed(2), category_id: selectedCategory, user_id: userID,expense_method:paymentMethod,expense_date:date,created_at:date}
     const { error } = await supabase
       .from('expenses')
       .insert([sendData]);
@@ -227,6 +228,7 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
     setDate(selectedDate);
     console.log(date)
   };
+  
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />

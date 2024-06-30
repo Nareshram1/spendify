@@ -106,8 +106,9 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       if (!groupedData[key][category]) {
         groupedData[key][category] = 0;
       }
+      console.log(parseInt(expense.amount))
   
-      groupedData[key][category] += expense.amount;
+      groupedData[key][category] += parseInt(expense.amount);
     });
   
     const labels: string[] = Object.keys(groupedData);

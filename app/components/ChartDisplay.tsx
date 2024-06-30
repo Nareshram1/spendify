@@ -35,7 +35,7 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
                 paddingLeft="10"
                 absolute
               />
-              <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(2)}</Text>
+              <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(0)}</Text>
             </>
           ) : (
             <Text style={styles.noDataText}>No Data on this {selectOptions}</Text>

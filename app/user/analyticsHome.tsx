@@ -247,7 +247,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
               }}
               style={styles.listItem}
             >
-              <Text style={styles.itemText}>₹{item.amount}</Text>
+              <Text style={styles.itemText}>₹{item.amount.toFixed(2)}</Text>
               <Text style={styles.itemText}>{item.category ?? 'Unknown'}</Text>
               <Text style={styles.itemText}>
                 {item.expense_method === 'upi' ? 'UPI' : 'CASH'}
