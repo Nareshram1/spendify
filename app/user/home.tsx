@@ -103,7 +103,15 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       alert('Category name cannot be empty');
       return;
     }
+      // Check if the category already exists (case insensitive)
+    const existingCategory = categories.find(category => 
+      category.name.toLowerCase() === newCategory.toLowerCase()
+    );
 
+    if (existingCategory) {
+      alert('Category already exists');
+      return;
+    }
     const { data, error } = await supabase
       .from('categories')
       .insert([{ name: newCategory, user_id: userID }])
@@ -166,24 +174,28 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   
       if (deleteExpensesError) {
         alert(deleteExpensesError.message);
+        return;
       }
       else{
         alert('Deleted');
-        return;
+        // return;
       }
   
       // delete all data for the category
-      const { error: deleteCategoryError } = await supabase
+      const { data,error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', categoryToDelete.id);
+        .eq('id', categoryToDelete.id)
+        .select();
   
-      if (deleteCategoryError) {
-        alert(deleteCategoryError.message);
+      if (error) {
+        alert(error);
       } else {
+        console.log("c-",categories);
         setCategories(categories.filter(category => category.id !== categoryToDelete.id));
         setCategoryToDelete(null);
         setIsModalVisible(false);
+        console.log(categories)
       }
     }
   };

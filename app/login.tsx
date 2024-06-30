@@ -42,7 +42,20 @@ const Login = () => {
         router.replace('/user'); // Replace 'Home' with your home screen component
       }
     };
-
+    const handleForgotPassword = async () => {
+      if (!email.trim()) {
+        alert('Please enter your email to reset your password.');
+        return;
+      }
+  
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+  
+      if (error) {
+        alert(error.message);
+      } else {
+        alert('Password reset email sent. Please check your inbox.');
+      }
+    };
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223'/>
@@ -89,7 +102,7 @@ const Login = () => {
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
         {/* Forgot Password Text */}
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
