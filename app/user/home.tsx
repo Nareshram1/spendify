@@ -243,7 +243,7 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       <GestureHandlerRootView>
         <BottomSheet
           ref={bottomSheetRef}
-          backgroundStyle={{ backgroundColor: '#D4D4D4' }}
+          backgroundStyle={{ backgroundColor: '#D1D1D1' }}
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           index={-1}
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     alignSelf:'flex-end'
   },
   AppNameText:{
-    fontFamily:'Kalam',
+    fontFamily:'cool',
     color:'white',
     fontSize:30,
     fontWeight:'700',
@@ -437,7 +437,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
+    // fontWeight: '500',
+    fontFamily:'cool',
     letterSpacing: 2,
     fontSize: 20,
   },
@@ -448,26 +449,29 @@ const styles = StyleSheet.create({
   mainText: {
     color: 'white',
     fontSize: 30,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
     letterSpacing: 2,
-    alignSelf:'center'
+    alignSelf:'center',
+    fontFamily:'cool',
   },
   mainTextBS: {
     color: 'black',
     fontSize: 30,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
     letterSpacing: 2,
-    alignSelf:'center'
+    alignSelf:'center',
+    fontFamily:'cool',
   },
   categoryList: {
-
+    width:'100%'
   },
   categoryPill: {
     borderRadius: 20,
     backgroundColor: '#706098',
     padding: 20,
     maxHeight:60,
-    margin:5
+    margin:5,
+    // marginLeft:9
   },
   selectedCategoryPill: {
     backgroundColor: '#0ac7b8',
@@ -476,7 +480,8 @@ const styles = StyleSheet.create({
     color: 'white',
     letterSpacing:2,
     fontSize:12,
-    fontWeight:'900'
+    // fontWeight:'900'
+    fontFamily:'cool',
   },
   newCategoryContainer: {
     flexDirection: 'row',
@@ -492,6 +497,7 @@ const styles = StyleSheet.create({
     color: 'white',
     letterSpacing: 2,
     fontSize: 16,
+    fontFamily:'cool',
     height:80
   },
   input1: {
@@ -500,6 +506,7 @@ const styles = StyleSheet.create({
     padding: 10,
     color: 'white',
     letterSpacing: 2,
+    fontFamily:'cool',
     fontSize: 16,
     width:'80%',
     height:80
@@ -516,6 +523,7 @@ const styles = StyleSheet.create({
   addCategoryButtonText: {
     fontSize: 30,
     color: 'white',
+
   },
   addExpenseButton: {
     backgroundColor: '#0ac7b8',
@@ -543,6 +551,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 18,
     textAlign: 'center',
+    fontFamily:'cool',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -581,7 +590,8 @@ const styles = StyleSheet.create({
   },
   textStyle: {
     color: 'white',
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
+    fontFamily:'cool',
     textAlign: 'center',
     fontSize:20
   },
@@ -619,6 +629,7 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     fontSize: 15,
+    fontFamily:'cool',
   },
   checkbox: {
     margin: 8,

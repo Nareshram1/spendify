@@ -23,7 +23,7 @@ interface FetchExpensesForTodayResult {
   expenses: Expense[];
   total: number;
 }
-// let istOffset = 5.5 * 60 * 60000;
+
 const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isDatePickerModalVisible, setIsDatePickerModalVisible] = useState(false);
@@ -34,7 +34,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   const [date, setDate] = useState<string>(() => {
     const istOffset = 5.5 * 60 * 60000; // IST offset from UTC
     return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
-});
+  });
 
   const [monthExpense, setMonthExpense] = useState<number>(0);
 
@@ -146,13 +146,6 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
     setSelectedExpense(null);
   };
 
-  // const handleEditExpense = () => {
-  //   // Implement navigation or modal for editing the selected expense
-  //   console.log('Editing expense:', selectedExpense);
-  //   // Close the modal after editing
-  //   handleCloseModal();
-  // };
-
   const handleDeleteExpense = async () => {
     if (!selectedExpense) return;
 
@@ -195,7 +188,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
                 selected={date}
               />
               <Pressable onPress={() => setIsDatePickerModalVisible(false)} style={styles.closeButton}>
-                <Text style={styles.closeButtonTextd}>Close</Text>
+                <Text style={styles.closeButtonText}>Close</Text>
               </Pressable>
             </View>
           </View>
@@ -210,9 +203,6 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
                 Expense Method: {selectedExpense?.expense_method === 'upi' ? 'UPI' : 'CASH'}
               </Text>
               <View style={styles.modalButtons}>
-                {/* <TouchableOpacity style={styles.editButton} onPress={handleEditExpense}>
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity> */}
                 <Pressable style={styles.deleteButton} onPress={handleDeleteExpense}>
                   <Text style={styles.deleteButtonText}>Delete</Text>
                 </Pressable>
@@ -240,7 +230,6 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
           )}
           renderItem={({ item }) => (
             <TouchableOpacity
-              // onPress={() => console.log('Expense clicked:', item)}
               onLongPress={() => {
                 setSelectedExpense(item);
                 setIsDeleteModalVisible(true);
@@ -303,31 +292,19 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 10,
+    fontFamily: 'cool',
   },
   modalText: {
     fontSize: 16,
     marginBottom: 10,
+    fontFamily: 'cool',
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     marginTop: 20,
-  },
-  editButton: {
-    backgroundColor: '#0ac7b8',
-    padding: 15,
-    borderRadius: 25,
-    width: '40%',
-    alignItems: 'center',
-  },
-  editButtonText: {
-    fontWeight: '500',
-    fontSize: 17,
-    letterSpacing: 2,
-    color: 'white',
   },
   deleteButton: {
     backgroundColor: '#e84a5f',
@@ -341,6 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     letterSpacing: 2,
     color: 'white',
+    fontFamily: 'cool',
   },
   closeButton: {
     backgroundColor: '#0ac7b8',
@@ -348,20 +326,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     width: '40%',
     alignItems: 'center',
-    alignSelf:'center'
+    alignSelf: 'center',
   },
   closeButtonText: {
     fontWeight: '500',
     fontSize: 17,
     letterSpacing: 2,
     color: 'white',
-  },
-  closeButtonTextd: {
-    fontWeight: '500',
-    fontSize: 17,
-    letterSpacing: 2,
-    color: 'white',
-    
+    fontFamily: 'cool',
   },
   datePickerContainer: {
     flexDirection: 'row',
@@ -372,7 +344,7 @@ const styles = StyleSheet.create({
   monthExpenseText: {
     color: 'white',
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: 'cool',
   },
   listHeader: {
     flexDirection: 'row',
@@ -381,7 +353,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4D4D4',
   },
   listHeaderText: {
-    fontWeight: 'bold',
+    fontFamily: 'cool',
     flex: 1,
     textAlign: 'center',
     fontSize: 16,
@@ -398,19 +370,20 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 15,
+    fontFamily: 'cool',
   },
   footer: {
     paddingVertical: 8,
     backgroundColor: '#D4D4D4',
   },
   footerText: {
-    fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 15,
+    fontFamily: 'cool',
   },
   flatList: {
     flex: 1,
-    minHeight:'100%'
+    minHeight: '100%',
   },
 });
 

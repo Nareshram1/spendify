@@ -22,10 +22,10 @@ export default AppBar;
 
 const styles = StyleSheet.create({
     AppNameText:{
-        fontFamily:'Roboto',
+        fontFamily:'cool',
         color:'white',
         fontSize:34,
-        fontWeight:'600',
+        // fontWeight:'600',
         letterSpacing:1,
       },
       AppBar:{

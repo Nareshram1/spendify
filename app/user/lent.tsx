@@ -181,7 +181,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
+    fontFamily:'cool',
     marginBottom: 20,
     color:'white',
     alignSelf:'center'
@@ -203,8 +204,9 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#ffffff',
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
     fontSize: 16,
+    fontFamily:'cool',
   },
   transactionList: {
     flexGrow: 1,
@@ -218,10 +220,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#cccccc',
     color:'white',
+    fontFamily:'cool',
   },
   listText:{
     color:'white',
-    fontSize:19
+    fontSize:19,
+    fontFamily:'cool',
   },
   addButton: {
     backgroundColor: '#0ac7b8',
@@ -229,7 +233,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
     marginTop: 20,
-    marginBottom:25
+    fontFamily:'cool',
+    marginBottom:25,
   },
   modalContainer: {
     flex: 1,
@@ -241,17 +246,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
+    fontFamily:'cool',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
     marginBottom: 10,
+    fontFamily:'cool',
   },
   input: {
     backgroundColor: '#f2f2f2',
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
+    fontFamily:'cool',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -266,6 +274,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: '#ffffff',
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
+    fontFamily:'cool',
   },
 });

@@ -43,10 +43,11 @@ const styles = StyleSheet.create({
   },
   datePickerContainer: {
     alignItems: 'center',
-    marginTop: 10,
+    // marginTop: 10,
   },
   datePickerText: {
     color: 'white',
     fontSize: 18,
+    fontFamily:'cool',
   },
 });

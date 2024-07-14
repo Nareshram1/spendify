@@ -12,16 +12,19 @@ const TopBar: React.FC<TopBarProps> = ({ selectOptions, setSelectOptions }) => {
     <View style={styles.topBar}>
       <Ionicons name="flash-outline" size={28} color="white"/>
       <Text style={styles.MainText}>Insights</Text>
+      <View style={styles.pickerView}>
+
       <Picker
         selectedValue={selectOptions}
         onValueChange={(item) => setSelectOptions(item)}
         style={styles.picker}
-      >
-        <Picker.Item label="Daily" value="day" />
-        <Picker.Item label="Weekly" value="week" />
-        <Picker.Item label="Monthly" value="month" />
-        <Picker.Item label="Yearly" value="year" />
+        >
+        <Picker.Item label="D" value="day" style={styles.pickerText} />
+        <Picker.Item label="W" value="week" style={styles.pickerText}/>
+        <Picker.Item label="M" value="month" style={styles.pickerText}/>
+        <Picker.Item label="Y" value="year" style={styles.pickerText}/>
       </Picker>
+        </View>
     </View>
   );
 };
@@ -41,14 +44,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: 'cool',
     letterSpacing: 2,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
+  },
+  pickerView:{
+    
+    // backgroundColor:'red',
+    // height:5,
+    width: '50%',
   },
   picker: {
     color: 'white',
-    fontWeight: 'bold',
-    width: '50%',
-    marginLeft: 50,
-    borderColor: 'white',
-    // backgroundColor:'red'
+    // fontFamily:'cool',
+    // fontWeight: 'bold',
+    width: '70%',
+    marginHorizontal:115,
+    // fontSize:24,
+    // borderColor: 'red',
+    
+    backgroundColor:'#D22B2B',
+    borderRadius:50,
+  },
+  pickerText:{
+    // fontFamily:'Kalam',
+    color:'black',
+    // paddingLeft:100
   },
 });
