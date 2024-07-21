@@ -17,7 +17,7 @@ Spendify is an expense tracker app that allows you to monitor your daily expense
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/spendify.git
+    git clone https://github.com/Nareshram1/spendify.git
     ```
 2. Navigate to the project directory:
     ```bash
