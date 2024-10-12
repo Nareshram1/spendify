@@ -97,8 +97,13 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
       Alert.alert('Error', 'Failed to delete transaction');
     }
   };
-
+  const handleMod=()=>{
+    // todo have to add a modification like add extra amount 
+  }
   const renderTransactionItem = ({ item }: { item: Transaction }) => (
+    <TouchableOpacity
+    onLongPress={handleMod}
+    >
     <View style={styles.transactionItem}>
       <View style={{width:'10%',flex:1,flexDirection:'row',justifyContent:'space-between',padding:13}}>
         <Text style={styles.listText}>{item.person_name}</Text>
@@ -108,6 +113,7 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
         <Text style={styles.deleteButtonText}>Delete</Text>
       </TouchableOpacity>
     </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -137,8 +143,8 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
               onChangeText={setPersonName}
             />
             <View style={styles.modalButtons}>
-              <Button title="Add" onPress={addTransaction} />
               <Button title="Cancel" onPress={() => setIsModalVisible(false)} color="red" />
+              <Button title="Add" onPress={addTransaction} />
             </View>
           </View>
         </View>
@@ -160,6 +166,7 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
         renderItem={renderTransactionItem}
         keyExtractor={(item) => item.id.toString()}
         style={styles.transactionList}
+        
       />
 
       {/* Button to add new transaction */}
@@ -270,11 +277,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff6347',
     paddingVertical: 5,
     paddingHorizontal: 10,
-    borderRadius: 5,
+    borderRadius: 50,
   },
   deleteButtonText: {
     color: '#ffffff',
     // fontWeight: 'bold',
     fontFamily:'cool',
+
   },
 });

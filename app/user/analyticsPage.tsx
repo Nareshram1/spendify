@@ -88,7 +88,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
           key = startOfWeek.toISOString().split('T')[0];
           break;
         case 'month':
-          key = `${expenseDate.getFullYear()}-0${expenseDate.getMonth() + 1}`;
+          key = `${expenseDate.getFullYear()}-${(expenseDate.getMonth() + 1).toString().padStart(2,'0')}`;
           break;
         case 'year':
           key = `${expenseDate.getFullYear()}`;
@@ -121,7 +121,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       if (period === 'day' || period === 'week') {
         return selectedDate.replace(/\//g, '-');
       } else if (period === 'month') {
-        console.log('--',selectedDate)
+        console.log('--',selectedDate.split('/')[1])
         // const date = new Date(selectedDate);
         return `${selectedDate.split('/')[0]}-${selectedDate.split('/')[1]}`;
       } else if (period === 'year') {
@@ -129,7 +129,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       }
       return selectedDate; // Fallback
     })();
-    console.log(groupedData)
+    console.log('-/',groupedData)
     console.log(formattedSelectedDate)
     const selectedData = groupedData[formattedSelectedDate] || {};
   
