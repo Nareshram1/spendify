@@ -1,17 +1,18 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal,TouchableWithoutFeedback } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView,ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../utils/supabaseClient'; 
 import { getValueFor ,deleteValueFor} from '../../utils/secureStore'; 
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons,Feather } from '@expo/vector-icons';
 import DatePicker from 'react-native-modern-datepicker';
 import Checkbox from 'expo-checkbox';
-
+import { Audio } from 'expo-av';
 import Analytics from './analyticsHome';
 import AppBar from './appBar';
+import * as Haptics from 'expo-haptics';
 type Category = {
   id: number;
   name: string;
@@ -23,6 +24,7 @@ interface UserPageProp{
 }
 // let istOffset = 5.5 * 60 * 60000;
 const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
+  const [sound, setSound] = useState();
   const snapPoints = useMemo(() => ['78%'], []);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
@@ -44,9 +46,37 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   const [paymentMethod, setPaymentMethod] = useState('upi');
   
   // const [active, setActive] = React.useState('');
+  async function SuccessPlaySound() {
+    console.log('Loading Sound');
+    const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/success.mp3')
+    );
+    //@ts-ignore
+    setSound(sound);
 
+    console.log('Playing Sound');
+    await sound.playAsync();
+  }
+  async function ErrorPlaySound() {
+    console.log('Loading Sound');
+    const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/error.mp3')
+    );
+    //@ts-ignore
+    setSound(sound);
 
+    console.log('Playing Sound');
+    await sound.playAsync();
+  }
   useEffect(() => {
+    return sound
+      ? () => {
+          console.log('Unloading Sound');
+          //@ts-ignore
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+  useEffect(() => {
+    
     const getCategories = async () => {
       const { data, error } = await supabase
         .from('categories')
@@ -129,11 +159,13 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
 
   const handleAddExpense = async () => {
     if (!amount.trim() || !selectedCategory) {
+      await ErrorPlaySound();
       alert('Please enter an amount or select a category');
       return;
     }
     if(parseFloat(amount)<=0.0)
     {
+      await ErrorPlaySound();
       alert(`Really ${amount} rupee on ${selectedCategoryName}`);
       return;
     }
@@ -151,9 +183,13 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       .insert([sendData]);
 
     if (error) {
+      await ErrorPlaySound();
       alert(error.message);
+
     } else {
-      alert('Expense added successfully');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+      await SuccessPlaySound();
+      // alert('Expense added successfully');
       setAmount('');
       setSelectedCategory(null);
       // handleClose(); Issue 2: Fixed
@@ -252,18 +288,17 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       <GestureHandlerRootView>
         <BottomSheet
           ref={bottomSheetRef}
-          backgroundStyle={{ backgroundColor: '#D1D1D1' }}
+          backgroundStyle={{ backgroundColor: 'rgba(20, 18, 35)' }}
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           index={-1}
           style={[styles.bottomSheetStyle, { zIndex: 999 }]} // Set a high zIndex value
           onChange={(index) => {setIsBottomSheetOpen(index > -1)}}
-          
         >
           <View style={{ flex: 1,flexDirection:'row', justifyContent: 'space-evenly',maxHeight:'10%' }}>
           <Text style={styles.mainTextBS}>Add Expense </Text>
           <Pressable style={{alignSelf:'center'}} onPress={()=>{setOpenModal(true)}}>
-          <Ionicons name="calendar" size={26} color="black"/>
+          <Feather name="calendar" size={26} color="white"/>
           </Pressable>
           </View>
           <View style={{ flex: 1, justifyContent: 'space-evenly' }}>
@@ -453,7 +488,9 @@ const styles = StyleSheet.create({
   },
   bottomSheetStyle: {
     padding: 20,
-    zIndex:999
+    zIndex:999,
+    backgroundColor:'rgba(23, 18, 35, 0.95)',
+    
   },
   mainText: {
     color: 'white',
@@ -464,7 +501,7 @@ const styles = StyleSheet.create({
     fontFamily:'cool',
   },
   mainTextBS: {
-    color: 'black',
+    color: 'white',
     fontSize: 30,
     // fontWeight: 'bold',
     letterSpacing: 2,
@@ -476,7 +513,7 @@ const styles = StyleSheet.create({
   },
   categoryPill: {
     borderRadius: 20,
-    backgroundColor: '#706098',
+    backgroundColor: '#333',
     padding: 20,
     maxHeight:60,
     margin:5,
@@ -500,7 +537,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   input2: {
-    backgroundColor: '#706098',
+    backgroundColor: '#333',
     borderRadius: 10,
     padding: 10,
     color: 'white',
@@ -510,7 +547,7 @@ const styles = StyleSheet.create({
     height:80
   },
   input1: {
-    backgroundColor: '#706098',
+    backgroundColor: '#333',
     borderRadius: 10,
     padding: 10,
     color: 'white',
@@ -639,8 +676,10 @@ const styles = StyleSheet.create({
   paragraph: {
     fontSize: 15,
     fontFamily:'cool',
+    color: 'white', 
   },
   checkbox: {
     margin: 8,
+    color: '#0ac7b8'
   },
 });

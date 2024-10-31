@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet,Text } from 'react-native';
 import { supabase } from '@/utils/supabaseClient';
 import TopBar from '../components/TopBar';
 import DatePickerModal from '../components/DatePickerModal';
 import ChartDisplay from '../components/ChartDisplay';
 import DateNavigation from '../components/DateNavigation';
+import CustomDate from '../components/CustomDates';
 
 interface AnalyticsPageProp {
   userID: string;
@@ -257,19 +258,28 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
         selectedDate={selectedDate} 
         handleDateChange={handleDateChange} 
       />
-      <ChartDisplay 
+      {
+        selectOptions === 'custom' ?
+        <CustomDate userID={userID}/>
+        :
+        <View style={styles.container}>
+        <ChartDisplay 
         loading={loading} 
         isPieData={isPieData} 
         data={data} 
         selectOptions={selectOptions} 
-      />
-      <DateNavigation 
+        />
+        <DateNavigation 
         handlePrevDay={handlePrevDay} 
         handleNextDay={handleNextDay} 
         selectedDate={selectedDate} 
         setOpenModal={setOpenModal} 
         // selectOptions={selectOptions} 
-      />
+        />
+        </View>
+      }
+        
+
     </View>
   );
 };

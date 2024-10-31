@@ -23,6 +23,7 @@ const TopBar: React.FC<TopBarProps> = ({ selectOptions, setSelectOptions }) => {
         <Picker.Item label="W" value="week" style={styles.pickerText}/>
         <Picker.Item label="M" value="month" style={styles.pickerText}/>
         <Picker.Item label="Y" value="year" style={styles.pickerText}/>
+        <Picker.Item label="C" value="custom" style={styles.pickerText}/>
       </Picker>
         </View>
     </View>

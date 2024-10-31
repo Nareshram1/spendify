@@ -12,14 +12,14 @@ interface DateNavigationProps {
 const DateNavigation: React.FC<DateNavigationProps> = ({ handlePrevDay, handleNextDay, selectedDate, setOpenModal }) => {
   return (
     <View style={styles.bottomPickerContainer}>
-      <Pressable onPress={handlePrevDay}>
-      <Ionicons name="caret-back-outline" size={32} color="white" style={{alignSelf:'center'}}/>
+      <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.buttonPressed]} onPress={handlePrevDay}>
+        <Ionicons name="caret-back-outline" size={24} color="#0ac7b8" />
       </Pressable>
       <Pressable style={styles.datePickerContainer} onPress={() => setOpenModal(true)}>
         <Text style={styles.datePickerText}>{selectedDate}</Text>
       </Pressable>
-      <Pressable onPress={handleNextDay}>
-      <Ionicons name="caret-forward-outline" size={32} color="white" style={{alignSelf:'center'}}/>
+      <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.buttonPressed]} onPress={handleNextDay}>
+        <Ionicons name="caret-forward-outline" size={24} color="#0ac7b8" />
       </Pressable>
     </View>
   );
@@ -29,25 +29,33 @@ export default DateNavigation;
 
 const styles = StyleSheet.create({
   bottomPickerContainer: {
-    flex: 1,
-    marginBottom: 20,
-    width: '100%',
-    maxHeight: '10%',
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  arrowText: {
-    fontSize: 42,
-    color: '#0ac7b8',
+  iconButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#333',
+  },
+  buttonPressed: {
+    opacity: 0.6,
   },
   datePickerContainer: {
-    alignItems: 'center',
-    // marginTop: 10,
+    padding: 10,
+    backgroundColor: '#333',
+    borderRadius: 8,
   },
   datePickerText: {
     color: 'white',
     fontSize: 18,
-    fontFamily:'cool',
+    fontWeight: '600',
   },
 });

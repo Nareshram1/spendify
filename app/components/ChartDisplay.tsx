@@ -9,13 +9,15 @@ interface ChartDisplayProps {
   selectOptions: string;
 }
 
-const LegendItem = ({ label }: { label: string }) => (
-  <View style={styles.legendItem}>
+const LegendItem = ({ label, color }: { label: string, color: string }) => (
+  <View style={[styles.legendItem, { backgroundColor: color + '20' }]}>
+    <View style={[styles.legendDot, { backgroundColor: color }]} />
     <Text style={styles.legendText}>{label}</Text>
   </View>
 );
 
 const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, selectOptions }) => {
+  console.log('-/  /-',data.pie)
   const renderLegend = () => {
     // Sort pieData by amount in descending order
     const sortedPieData = [...data.pieData].sort((a, b) => b.amount - a.amount);
@@ -23,8 +25,12 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
     return (
       <ScrollView horizontal style={styles.legendContainer}>
         {sortedPieData.map((item: any, index: number) => (
-          <LegendItem key={index} label={`${item.name}: ₹${item.amount.toFixed(0)} (${((item.amount / data.totalSum) * 100).toFixed(2)}%)`} />
-        ))}
+            <LegendItem 
+            key={index} 
+            color={item.color}
+            label={`${item.name}: ₹${item.amount.toFixed(0)} (${((item.amount / data.totalSum) * 100).toFixed(2)}%)`} 
+            />        
+          ))}
       </ScrollView>
     );
   };
@@ -37,23 +43,22 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
         <>
           {isPieData ? (
             <>
-              <Text style={styles.chartTitle}>Category wise</Text>
+              <Text style={styles.chartTitle}>Category wise expense</Text>
               <PieChart
                 data={data.pieData}
-                width={Dimensions.get('window').width} // Adjust width here
-                height={275} // Adjust height here
+                width={Dimensions.get('window').width-32} // Adjust width here
+                height={250} // Adjust height here
                 chartConfig={{
                   backgroundColor: '#171223',
                   backgroundGradientFrom: '#171223',
                   backgroundGradientTo: '#171223',
                   color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                }}
-                accessor="amount"
-                backgroundColor="transparent"
-                paddingLeft="20"
-                style={styles.chartText}
-                absolute
+              }}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
               />
               <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(0)}</Text>
               {renderLegend()}
@@ -101,17 +106,21 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     marginRight: 10,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
   },
   legendText: {
     color: 'white',
     fontSize: 15,
-    // fontWeight:'bold'
-    fontFamily:'cool',
+    fontFamily: 'cool',
   },
   chartText:{
     // backgroundColor:'red',

@@ -6,9 +6,34 @@ import LendingsAndBorrowingsPage from './lent'
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import AnalyticsPage from './analyticsPage';
+
+import { Audio } from 'expo-av';
 const mainPage = () => {
+  const [sound, setSound] = useState();
   const [userID, setUserID] = useState('');
   const [scroll, setScroll] = useState(true);
+
+  async function BootPlaySound() {
+    console.log('Loading Sound');
+    const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/booting.mp3')
+    );
+    //@ts-ignore
+    setSound(sound);
+
+    console.log('Playing Sound');
+    await sound.playAsync();
+  }
+
+  useEffect(() => {
+    return sound
+      ? () => {
+          console.log('Unloading Sound');
+          //@ts-ignore
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
   const toggleScroll=(value:boolean)=>{
     setScroll(value)
   }
@@ -27,6 +52,10 @@ const mainPage = () => {
     };
     // console.log(date)
     checkLoggedIn();
+    const play=async()=>{
+      await BootPlaySound();
+    }
+    play();
   }, []);
   return (
     <View style={styles.container}>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Modal, Text, Pressable, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Modal, Text, Pressable, FlatList, StyleSheet, TouchableOpacity,Dimensions } from 'react-native';
 import DatePicker from 'react-native-modern-datepicker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/utils/supabaseClient';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons,Feather } from '@expo/vector-icons';
 
 interface AnalyticsProp {
   refresh: Boolean;
@@ -23,7 +23,7 @@ interface FetchExpensesForTodayResult {
   expenses: Expense[];
   total: number;
 }
-
+const { width } = Dimensions.get('window');
 const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isDatePickerModalVisible, setIsDatePickerModalVisible] = useState(false);
@@ -171,62 +171,103 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   };
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>
+    <SafeAreaProvider style={styles.safeArea}>
+
+        {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={handleDataPickerModal} style={styles.datePickerContainer}>
-            <Text style={styles.monthExpenseText}>This Month: ₹{monthExpense.toFixed(2).toString()}</Text>
-            <Ionicons name="calendar" size={24} color="white" />
+          <Pressable onPress={() => setIsDatePickerModalVisible(true)} style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>This month</Text>
+              <Text style={styles.monthExpenseText}>₹{monthExpense.toFixed(2)}</Text>
+            </View>
+            <Feather name="calendar" size={28} color="white" />
           </Pressable>
         </View>
-        <Modal visible={isDatePickerModalVisible} transparent={true} animationType="slide">
-          <View style={styles.modalContainer}>
-            <View style={styles.datePickerContent}>
+
+        {/* Date Picker Modal */}
+        <Modal 
+          visible={isDatePickerModalVisible} 
+          transparent={true} 
+          animationType="slide"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.datePickerModal}>
               <DatePicker
                 mode="calendar"
                 onSelectedChange={handleDateChange}
                 selected={date}
+                options={{
+                  backgroundColor: 'white',
+                  textHeaderColor: '#6A11CB',
+                  selectedTextColor: 'white',
+                  mainColor: '#6A11CB',
+                }}
               />
-              <Pressable onPress={() => setIsDatePickerModalVisible(false)} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>Close</Text>
+              <Pressable 
+                onPress={() => setIsDatePickerModalVisible(false)} 
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseButtonText}>Close</Text>
               </Pressable>
             </View>
           </View>
         </Modal>
-        <Modal visible={isDeleteModalVisible} transparent={true} animationType="slide">
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Delete Expense</Text>
-              <Text style={styles.modalText}>Amount: ₹{selectedExpense?.amount}</Text>
-              <Text style={styles.modalText}>Category: {selectedExpense?.category ?? 'Unknown'}</Text>
-              <Text style={styles.modalText}>
-                Expense Method: {selectedExpense?.expense_method === 'upi' ? 'UPI' : 'CASH'}
-              </Text>
-              <View style={styles.modalButtons}>
-                <Pressable style={styles.deleteButton} onPress={handleDeleteExpense}>
+
+        {/* Delete Expense Modal */}
+        <Modal 
+          visible={isDeleteModalVisible} 
+          transparent={true} 
+          animationType="slide"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.deleteModal}>
+              <Text style={styles.deleteModalTitle}>Delete Expense</Text>
+              <View style={styles.deleteModalDetails}>
+                <View style={styles.deleteModalRow}>
+                  <Text style={styles.deleteModalLabel}>Amount:</Text>
+                  <Text style={styles.deleteModalValue}>₹{selectedExpense?.amount}</Text>
+                </View>
+                <View style={styles.deleteModalRow}>
+                  <Text style={styles.deleteModalLabel}>Category:</Text>
+                  <Text style={styles.deleteModalValue}>{selectedExpense?.category ?? 'Unknown'}</Text>
+                </View>
+                <View style={styles.deleteModalRow}>
+                  <Text style={styles.deleteModalLabel}>Method:</Text>
+                  <Text style={styles.deleteModalValue}>
+                    {selectedExpense?.expense_method === 'upi' ? 'UPI' : 'CASH'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.deleteModalActions}>
+                <TouchableOpacity 
+                  style={styles.deleteButton} 
+                  onPress={handleDeleteExpense}
+                >
                   <Text style={styles.deleteButtonText}>Delete</Text>
-                </Pressable>
-                <Pressable onPress={handleCloseModal} style={styles.closeButton}>
-                  <Text style={styles.closeButtonText}>Cancel</Text>
-                </Pressable>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.cancelButton} 
+                  onPress={() => setIsDeleteModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         </Modal>
 
+        {/* Expense List */}
         <FlatList
           data={expenses}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={() => (
-            <>
-              {total > 0 && (
-                <View style={styles.listHeader}>
-                  <Text style={styles.listHeaderText}>Amount</Text>
-                  <Text style={styles.listHeaderText}>Category</Text>
-                  <Text style={styles.listHeaderText}>Acc</Text>
-                </View>
-              )}
-            </>
+            expenses.length > 0 && (
+              <View style={styles.listHeader}>
+                <Text style={styles.listHeaderText}>Amount</Text>
+                <Text style={styles.listHeaderText}>Category</Text>
+                <Text style={styles.listHeaderText}>Method</Text>
+              </View>
+            )
           )}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -248,142 +289,174 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
               {total > 0 ? (
                 <Text style={styles.footerText}>Total: ₹{total.toFixed(0)}</Text>
               ) : (
-                <Text style={styles.footerText}>No Expense on this day</Text>
+                <Text style={styles.footerText}>No Expenses on this day</Text>
               )}
             </View>
           )}
-          style={styles.flatList}
+          contentContainerStyle={styles.listContainer}
         />
-      </View>
+    
     </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    padding: 16,
+    paddingTop: 50,
   },
   header: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
-    marginTop: 45,
   },
-  datePickerContent: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    borderRadius: 10,
-    paddingBottom: 10,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    borderRadius: 10,
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    marginBottom: 10,
-    fontFamily: 'cool',
-  },
-  modalText: {
+  headerTitle: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 16,
-    marginBottom: 10,
-    fontFamily: 'cool',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 20,
-  },
-  deleteButton: {
-    backgroundColor: '#e84a5f',
-    padding: 15,
-    borderRadius: 25,
-    width: '40%',
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    fontWeight: '500',
-    fontSize: 17,
-    letterSpacing: 2,
-    color: 'white',
-    fontFamily: 'cool',
-  },
-  closeButton: {
-    backgroundColor: '#0ac7b8',
-    padding: 15,
-    borderRadius: 25,
-    width: '40%',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  closeButtonText: {
-    fontWeight: '500',
-    fontSize: 17,
-    letterSpacing: 2,
-    color: 'white',
-    fontFamily: 'cool',
-  },
-  datePickerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
+    marginBottom: 5,
   },
   monthExpenseText: {
     color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerModal: {
+    width: width * 0.9,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalCloseButton: {
+    backgroundColor: '#0ac7b8',
+    padding: 12,
+    borderRadius: 25,
+    marginTop: 10,
+    alignSelf: 'center',
+  },
+  modalCloseButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  deleteModal: {
+    width: width * 0.85,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+  },
+  deleteModalTitle: {
     fontSize: 20,
-    fontFamily: 'cool',
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#6A11CB',
+  },
+  deleteModalDetails: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  deleteModalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  deleteModalLabel: {
+    color: '#666',
+    fontSize: 16,
+  },
+  deleteModalValue: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  deleteButton: {
+    backgroundColor: '#FF6B6B',
+    padding: 12,
+    borderRadius: 25,
+    width: '48%',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#4ECDC4',
+    padding: 12,
+    borderRadius: 25,
+    width: '48%',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  listContainer: {
+    paddingHorizontal: 20,
   },
   listHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    backgroundColor: '#D4D4D4',
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    marginBottom: 10,
   },
   listHeaderText: {
-    fontFamily: 'cool',
     flex: 1,
     textAlign: 'center',
-    fontSize: 16,
+    color: 'white',
+    fontWeight: 'bold',
   },
   listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    backgroundColor: 'white',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'transparent',
   },
   itemText: {
     flex: 1,
     textAlign: 'center',
+    color: 'white',
     fontSize: 15,
-    fontFamily: 'cool',
   },
   footer: {
-    paddingVertical: 8,
-    backgroundColor: '#D4D4D4',
+    marginTop: 10,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
   },
   footerText: {
     textAlign: 'center',
-    fontSize: 15,
-    fontFamily: 'cool',
-  },
-  flatList: {
-    flex: 1,
-    minHeight: '100%',
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 
