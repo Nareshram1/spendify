@@ -29,6 +29,7 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategoryName,setSelectedCategoryName] = useState<String>('');
   const [amount, setAmount] = useState('');
 //   const [userID, setUserID] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -128,7 +129,12 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
 
   const handleAddExpense = async () => {
     if (!amount.trim() || !selectedCategory) {
-      alert('Please enter an amount and select a category');
+      alert('Please enter an amount or select a category');
+      return;
+    }
+    if(parseFloat(amount)<=0.0)
+    {
+      alert(`Really ${amount} rupee on ${selectedCategoryName}`);
       return;
     }
     // const formatedAmount=
@@ -208,7 +214,10 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
         styles.categoryPill,
         selectedCategory === item.id && styles.selectedCategoryPill,
       ]}
-      onPress={() => setSelectedCategory(item.id)}
+      onPress={() => {
+        setSelectedCategory(item.id)
+        setSelectedCategoryName(item.name);
+      }}
       onLongPress={() => {
         setCategoryToDelete(item);
         setIsModalVisible(true);
