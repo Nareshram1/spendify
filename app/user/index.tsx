@@ -13,6 +13,7 @@ import AnalyticsPage from './analyticsPage';
 
 import { Audio } from 'expo-av';
 import User from './home';
+import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const MainPage = () => {
   const [sound, setSound] = useState();
@@ -87,7 +88,6 @@ const MainPage = () => {
         syncCategory();
         syncLocalData();
         
-        
       } else {
         setIsOffline(true);
         loadCategories();
@@ -124,10 +124,15 @@ const MainPage = () => {
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       {isOffline ? (
-              <OfflineUI 
-              categories={categories}
-              userID={userID}
-            />
+          <PagerView style={styles.container} initialPage={1}>
+            <OfflineUI 
+            categories={categories}
+            userID={userID}
+          />
+          <OfflineUIShow
+          categories={categories}
+          />
+          </PagerView>
       ) : (
         
           refresh &&
@@ -141,7 +146,88 @@ const MainPage = () => {
     </View>
   );
 };
+const OfflineUIShow=(categories:any)=>{
+  const [expenses, setExpenses] = useState([]);
 
+  useEffect(() => {
+    const loadOfflineExpenses = async () => {
+      try {
+        const localData = await getValueFor('expense');
+        if (localData) {
+          const parsedData = JSON.parse(localData);
+          setExpenses(parsedData);
+        }
+      } catch (error) {
+        console.error('Error loading offline expenses:', error);
+      }
+    };
+
+    loadOfflineExpenses();
+    console.log('lc ',expenses)
+  }, []);
+
+  const calculateTotal = () => {
+    //@ts-ignore
+    return expenses.reduce((total, expense) => total + parseFloat(expense.amount), 0);
+  };
+  //@ts-ignore
+  const getCategoryName = (categoryId) => {
+    //@ts-ignore
+    const category = categories.categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Unknown';
+    // return "temp";
+  };
+  return(
+    <View style={{backgroundColor:'#171223',minHeight:'100%',padding:5,paddingTop:30}}>
+      <GestureHandlerRootView>
+        {/* <Text style={{color:'white',fontSize:24,fontWeight:'500',margin:15}}>Offline Data</Text> */}
+        <View style={styles.offlineBanner}>
+        <MaterialIcons name="wifi-off" size={24} color="white" />
+        <Text style={styles.offlineText}>Offline Expenses</Text>
+      </View>
+      <FlatList
+          data={expenses}
+          ListEmptyComponent={() => (
+            <View style={{alignItems: 'center', justifyContent: 'center', flex: 1, padding: 20}}>
+              <Text style={{color: 'white', fontSize: 18}}>No offline expenses saved</Text>
+            </View>
+          )}
+          keyExtractor={(item:any, index) => index.toString()}
+          ListHeaderComponent={() => (
+            expenses.length > 0 && (
+              <View style={styles.listHeader}>
+                <Text style={styles.listHeaderText}>Amount</Text>
+                <Text style={styles.listHeaderText}>Category</Text>
+                <Text style={styles.listHeaderText}>Date</Text>
+              </View>
+            )
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.listItem}
+            >
+              <Text style={styles.itemText}>₹{parseFloat(item.amount).toFixed(2)}</Text>
+              <Text style={styles.itemText}>
+                {getCategoryName(item.category_id)}
+              </Text>
+              <Text style={styles.itemText}>
+                {new Date(item.expense_date).toLocaleDateString()}
+              </Text>
+            </TouchableOpacity>
+          )}
+          ListFooterComponent={() => (
+            <View style={styles.footer}>
+              {expenses.length > 0 ? (
+                <Text style={styles.footerText}>Total: ₹{calculateTotal().toFixed(2)}</Text>
+              ) : null}
+            </View>
+          )}
+          contentContainerStyle={styles.listContainer}
+        />
+        </GestureHandlerRootView>
+    </View>
+    )
+}
 //@ts-ignore
 const OfflineUI = ({ categories, userID }) => {
   const [category, setCategory] = useState('');
@@ -239,6 +325,9 @@ const OfflineUI = ({ categories, userID }) => {
 
           <Text style={styles.syncNote}>
             Your expense will be synced when you're back online
+          </Text>
+          <Text style={styles.syncNote}>
+            Swipe right to see data
           </Text>
         </View>
       </View>
@@ -342,5 +431,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 16,
     fontStyle: 'italic',
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  listHeaderText: {
+    flex: 1,
+    textAlign: 'center',
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  listItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'transparent',
+  },
+  itemText: {
+    flex: 1,
+    textAlign: 'center',
+    color: 'white',
+    fontSize: 15,
+  },
+  footer: {
+    marginTop: 10,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+  },
+  footerText: {
+    textAlign: 'center',
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
