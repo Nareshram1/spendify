@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, TextInput, Button,TouchableOpacity, ScrollView, ToastAndroid } from 'react-native';
+import { StyleSheet, Text, View, Alert, TextInput, Button,TouchableOpacity, ScrollView, ToastAndroid, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
@@ -149,18 +149,18 @@ const MainPage = () => {
 const OfflineUIShow=(categories:any)=>{
   const [expenses, setExpenses] = useState([]);
 
-  useEffect(() => {
-    const loadOfflineExpenses = async () => {
-      try {
-        const localData = await getValueFor('expense');
-        if (localData) {
-          const parsedData = JSON.parse(localData);
-          setExpenses(parsedData);
-        }
-      } catch (error) {
-        console.error('Error loading offline expenses:', error);
+  const loadOfflineExpenses = async () => {
+    try {
+      const localData = await getValueFor('expense');
+      if (localData) {
+        const parsedData = JSON.parse(localData);
+        setExpenses(parsedData);
       }
-    };
+    } catch (error) {
+      console.error('Error loading offline expenses:', error);
+    }
+  };
+  useEffect(() => {
 
     loadOfflineExpenses();
     console.log('lc ',expenses)
@@ -184,6 +184,9 @@ const OfflineUIShow=(categories:any)=>{
         <View style={styles.offlineBanner}>
         <MaterialIcons name="wifi-off" size={24} color="white" />
         <Text style={styles.offlineText}>Offline Expenses</Text>
+        <Pressable style={{marginHorizontal:150}} onPress={loadOfflineExpenses}>
+         <MaterialIcons name="refresh" size={24} color="white"  />
+        </Pressable>
       </View>
       <FlatList
           data={expenses}
@@ -261,6 +264,8 @@ const OfflineUI = ({ categories, userID }) => {
       updatedData.push(expenseData);
       await save('expense', JSON.stringify(updatedData));
       Alert.alert('Saved offline');
+      setAmount('');
+      setCategory('');
     }
     catch (error) {
       console.log('error', error);
