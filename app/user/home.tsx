@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal,TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView,ScrollView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -276,7 +276,7 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor='#171223' />
+      
   
       <AppBar setProfileModalVisible={setProfileModalVisible}/>
   

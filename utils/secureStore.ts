@@ -13,3 +13,7 @@ export async function getValueFor(key: string): Promise<string | null> {
 export async function deleteValueFor(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key);
 }
+
+export async function saveCategory(key:string,data:{id:any,name:any}[]) {
+  await SecureStore.setItemAsync(key,JSON.stringify(data))
+}
