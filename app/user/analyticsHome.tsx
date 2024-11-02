@@ -6,6 +6,7 @@ import { supabase } from '@/utils/supabaseClient';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import { Ionicons,Feather } from '@expo/vector-icons';
+import ExpenseActionModal from '../components/DeleteModal';
 
 interface AnalyticsProp {
   refresh: Boolean;
@@ -169,7 +170,29 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
       // Handle error display or notification
     }
   };
-
+  const handleUpdateExpense = async (updatedExpense:any) => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          amount: updatedExpense.amount,
+          category_id: updatedExpense.category_id,
+          expense_method: updatedExpense.expense_method
+        })
+        .eq('id', updatedExpense.id);
+  
+      if (error) {
+        console.error('Error updating expense:', error.message);
+        return;
+      }
+  
+      console.log('Expense updated successfully:', data);
+      // Refetch data to update the expense list
+      fetchData();
+    } catch (error) {
+      console.error('Error updating expense:', error);
+    }
+  };
   return (
     <SafeAreaProvider style={styles.safeArea}>
 
@@ -214,47 +237,14 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
         </Modal>
 
         {/* Delete Expense Modal */}
-        <Modal 
-          visible={isDeleteModalVisible} 
-          transparent={true} 
-          animationType="slide"
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.deleteModal}>
-              <Text style={styles.deleteModalTitle}>Delete Expense</Text>
-              <View style={styles.deleteModalDetails}>
-                <View style={styles.deleteModalRow}>
-                  <Text style={styles.deleteModalLabel}>Amount:</Text>
-                  <Text style={styles.deleteModalValue}>₹{selectedExpense?.amount}</Text>
-                </View>
-                <View style={styles.deleteModalRow}>
-                  <Text style={styles.deleteModalLabel}>Category:</Text>
-                  <Text style={styles.deleteModalValue}>{selectedExpense?.category ?? 'Unknown'}</Text>
-                </View>
-                <View style={styles.deleteModalRow}>
-                  <Text style={styles.deleteModalLabel}>Method:</Text>
-                  <Text style={styles.deleteModalValue}>
-                    {selectedExpense?.expense_method === 'upi' ? 'UPI' : 'CASH'}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.deleteModalActions}>
-                <TouchableOpacity 
-                  style={styles.deleteButton} 
-                  onPress={handleDeleteExpense}
-                >
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.cancelButton} 
-                  onPress={() => setIsDeleteModalVisible(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+        <ExpenseActionModal
+            visible={isDeleteModalVisible}
+            expense={selectedExpense}
+            onClose={() => setIsDeleteModalVisible(false)}
+            onDelete={handleDeleteExpense}
+            onUpdate={handleUpdateExpense}
+            userID={userID}
+          />
 
         {/* Expense List */}
         <FlatList

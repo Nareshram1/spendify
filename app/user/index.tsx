@@ -124,14 +124,16 @@ const MainPage = () => {
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       {isOffline ? (
-          <PagerView style={styles.container} initialPage={1}>
+        
+          <PagerView style={styles.container} initialPage={0}> 
+            <OfflineUIShow
+            categories={categories}
+            />
             <OfflineUI 
             categories={categories}
             userID={userID}
           />
-          <OfflineUIShow
-          categories={categories}
-          />
+
           </PagerView>
       ) : (
         
@@ -332,7 +334,7 @@ const OfflineUI = ({ categories, userID }) => {
             Your expense will be synced when you're back online
           </Text>
           <Text style={styles.syncNote}>
-            Swipe right to see data
+            Swipe left to see data
           </Text>
         </View>
       </View>
