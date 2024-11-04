@@ -8,7 +8,6 @@ import { getValueFor ,deleteValueFor} from '../../utils/secureStore';
 import { router } from 'expo-router';
 import { Ionicons,Feather } from '@expo/vector-icons';
 import DatePicker from 'react-native-modern-datepicker';
-import Checkbox from 'expo-checkbox';
 import { Audio } from 'expo-av';
 import Analytics from './analyticsHome';
 import AppBar from './appBar';
@@ -25,7 +24,7 @@ interface UserPageProp{
 // let istOffset = 5.5 * 60 * 60000;
 const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   const [sound, setSound] = useState();
-  const snapPoints = useMemo(() => ['78%'], []);
+  const snapPoints = useMemo(() => ['25%','78%'], []);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -262,7 +261,27 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       <Text style={styles.categoryText}>{item.name}</Text>
     </TouchableOpacity>
   );
-
+  const renderPaymentMethod = (method: string, icon: any) => (
+    <TouchableOpacity 
+      style={[
+        styles.paymentMethodButton,
+        paymentMethod === method && styles.selectedPaymentMethod
+      ]}
+      onPress={() => setPaymentMethod(method)}
+    >
+      <Ionicons 
+        name={icon} 
+        size={24} 
+        color={paymentMethod === method ? '#fff' : '#888'} 
+      />
+      <Text style={[
+        styles.paymentMethodText,
+        paymentMethod === method && styles.selectedPaymentMethodText
+      ]}>
+        {method.toUpperCase()}
+      </Text>
+    </TouchableOpacity>
+  );
   const handleLogOut = async () => {
     await deleteValueFor('user_id');
     await deleteValueFor('user_email');
@@ -285,83 +304,94 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       <Analytics refresh={refreshAnalytics}/>
       }
   
-      <GestureHandlerRootView>
+  <GestureHandlerRootView>
         <BottomSheet
           ref={bottomSheetRef}
-          backgroundStyle={{ backgroundColor: 'rgba(20, 18, 35)' }}
+          backgroundStyle={styles.bottomSheetBackground}
           snapPoints={snapPoints}
           enablePanDownToClose={true}
           index={-1}
-          style={[styles.bottomSheetStyle, { zIndex: 999 }]} // Set a high zIndex value
-          onChange={(index) => {setIsBottomSheetOpen(index > -1)}}
+          style={styles.bottomSheetStyle}
+          onChange={(index) => {
+            setIsBottomSheetOpen(index > -1);
+            if (index === 0) {
+              // Quick add mode
+              bottomSheetRef.current?.snapToIndex(1);
+            }
+          }}
         >
-          <View style={{ flex: 1,flexDirection:'row', justifyContent: 'space-evenly',maxHeight:'10%' }}>
-          <Text style={styles.mainTextBS}>Add Expense </Text>
-          <Pressable style={{alignSelf:'center'}} onPress={()=>{setOpenModal(true)}}>
-          <Feather name="calendar" size={26} color="white"/>
-          </Pressable>
-          </View>
-          <View style={{ flex: 1, justifyContent: 'space-evenly' }}>
-  
-            <ScrollView horizontal={true} style={{ maxHeight: 100, padding: 10 }}>
-              <View style={styles.categoryList}>
-                <FlatList
-                  data={categories}
-                  renderItem={renderCategoryItem}
-                  keyExtractor={(item) => item.id.toString()}
-                  horizontal
-                  showsHorizontalScrollIndicator={true}
-                  contentContainerStyle={styles.categoryList}
-                />
-              </View>
-            </ScrollView>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.mainTextBS}>Amount</Text>
+              <Pressable 
+                style={styles.dateButton} 
+                onPress={() => setOpenModal(true)}
+              >
+                <Feather name="calendar" size={24} color="white" />
+                <Text style={styles.dateButtonText}>{date.replace(/\//g, '-')}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.amountInputContainer}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="0.00"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+              />
+            </View>
+
+            <View style={styles.paymentMethodsContainer}>
+              {renderPaymentMethod('upi', 'phone-portrait-outline')}
+              {renderPaymentMethod('cash', 'wallet-outline')}
+            </View>
+
+            <View style={styles.categoriesSection}>
+              <Text style={styles.sectionTitle}>Categories</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.categoryList}>
+                  <FlatList
+                    data={categories}
+                    renderItem={renderCategoryItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categoryListContent}
+                  />
+                </View>
+              </ScrollView>
+            </View>
+
             <View style={styles.newCategoryContainer}>
               <TextInput
-                style={styles.input1}
-                placeholder="New Category"
-                placeholderTextColor="white"
+                style={styles.newCategoryInput}
+                placeholder="Add New Category"
+                placeholderTextColor="#666"
                 value={newCategory}
                 onChangeText={setNewCategory}
               />
-              <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
+              <TouchableOpacity 
+                style={styles.addCategoryButton} 
+                onPress={handleAddCategory}
+              >
                 <Text style={styles.addCategoryButtonText}>+</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Checkbox
-                    style={styles.checkbox}
-                    value={paymentMethod === 'upi'}
-                    onValueChange={() => setPaymentMethod('upi')}
-                    color={paymentMethod === 'upi' ? '#4630EB' : undefined}
-                  />
-                  <Text style={styles.paragraph}>Upi</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Checkbox
-                    style={styles.checkbox}
-                    value={paymentMethod === 'cash'}
-                    onValueChange={() => setPaymentMethod('cash')}
-                    color={paymentMethod === 'cash' ? '#4630EB' : undefined}
-                  />
-                  <Text style={styles.paragraph}>cash</Text>
-                </View>
-              </View>
-
-            <TextInput
-              style={styles.input2}
-              placeholder="Amount"
-              placeholderTextColor="white"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              onPress={()=>{}}
-            />
+            <TouchableOpacity 
+              style={[
+                styles.addExpenseButton,
+                (!amount || !selectedCategory) && styles.addExpenseButtonDisabled
+              ]} 
+              onPress={handleAddExpense}
+              disabled={!amount || !selectedCategory}
+            >
+              <Text style={styles.buttonText}>Add Expense</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.addExpenseButton} onPress={handleAddExpense}>
-            <Text style={styles.buttonText}>Add Expense</Text>
-          </TouchableOpacity>
         </BottomSheet>
       </GestureHandlerRootView>
   
@@ -403,14 +433,14 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
             <Pressable onPress={() => { setProfileModalVisible(false) }} style={{ alignSelf: 'flex-end' }}>
               <Ionicons name="close" size={32} color="white" style={styles.icon} />
             </Pressable>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.button}
               onPress={() => {
                 // handle change password
               }}
             >
               <Text style={styles.textStyle}>Change Password</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               style={styles.button}
               onPress={() => {
@@ -456,7 +486,7 @@ const styles = StyleSheet.create({
     alignSelf:'flex-end'
   },
   AppNameText:{
-    fontFamily:'cool',
+    // fontFamily:'cool',
     color:'white',
     fontSize:30,
     fontWeight:'700',
@@ -487,7 +517,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   bottomSheetStyle: {
-    padding: 20,
+    padding: 10,
     zIndex:999,
     backgroundColor:'rgba(23, 18, 35, 0.95)',
     
@@ -502,7 +532,7 @@ const styles = StyleSheet.create({
   },
   mainTextBS: {
     color: 'white',
-    fontSize: 30,
+    fontSize: 20,
     // fontWeight: 'bold',
     letterSpacing: 2,
     alignSelf:'center',
@@ -512,12 +542,10 @@ const styles = StyleSheet.create({
     width:'100%'
   },
   categoryPill: {
-    borderRadius: 20,
-    backgroundColor: '#333',
-    padding: 20,
-    maxHeight:60,
-    margin:5,
-    // marginLeft:9
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    marginHorizontal: 4,
   },
   selectedCategoryPill: {
     backgroundColor: '#0ac7b8',
@@ -564,10 +592,9 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
   addCategoryButtonText: {
-    fontSize: 30,
+    fontSize: 29,
     color: 'white',
 
   },
@@ -681,5 +708,105 @@ const styles = StyleSheet.create({
   checkbox: {
     margin: 8,
     color: '#0ac7b8'
+  },
+  bottomSheetBackground: {
+    backgroundColor: 'rgba(23, 18, 35, 0.1)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  bottomSheetContent: {
+    flex: 1,
+    padding: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 8,
+    borderRadius: 12,
+    gap: 8,
+  },
+  dateButtonText: {
+    color: 'white',
+    fontFamily: 'cool',
+    fontSize: 16,
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  currencySymbol: {
+    color: '#0ac7b8',
+    fontSize: 24,
+    fontFamily: 'cool',
+    marginRight: 8,
+  },
+  amountInput: {
+    flex: 1,
+    color: 'white',
+    fontSize: 24,
+    fontFamily: 'cool',
+    padding: 0,
+  },
+  paymentMethodsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+  },
+  paymentMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  selectedPaymentMethod: {
+    backgroundColor: '#0ac7b8',
+  },
+  paymentMethodText: {
+    color: '#888',
+    fontFamily: 'cool',
+    fontSize: 14,
+  },
+  selectedPaymentMethodText: {
+    color: 'white',
+  },
+  categoriesSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    color: 'white',
+    fontFamily: 'cool',
+    fontSize: 20,
+    marginBottom: 12,
+  },
+  categoryListContent: {
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  newCategoryInput: {
+    flex: 1,
+    backgroundColor: '#333',
+    borderRadius: 12,
+    padding: 16,
+    color: 'white',
+    fontSize: 16,
+    marginRight: 12,
+  },
+  addExpenseButtonDisabled: {
+    backgroundColor: 'rgba(10, 199, 184, 0.5)',
   },
 });
