@@ -172,6 +172,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   };
   const handleUpdateExpense = async (updatedExpense:any) => {
     try {
+      console.log(updatedExpense);
       const { data, error } = await supabase
         .from('expenses')
         .update({
