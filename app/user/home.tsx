@@ -46,13 +46,11 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
   
   // const [active, setActive] = React.useState('');
   async function SuccessPlaySound() {
-    console.log('Loading Sound');
     const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/success.mp3')
     );
     //@ts-ignore
     setSound(sound);
 
-    console.log('Playing Sound');
     await sound.playAsync();
   }
   async function ErrorPlaySound() {
@@ -62,13 +60,11 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
     //@ts-ignore
     setSound(sound);
 
-    console.log('Playing Sound');
     await sound.playAsync();
   }
   useEffect(() => {
     return sound
       ? () => {
-          console.log('Unloading Sound');
           //@ts-ignore
           sound.unloadAsync();
         }
@@ -100,8 +96,7 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       }
       else
       toggleScroll(true)
-    
-    console.log("NOW",new Date())
+
     function getCurrentISTTime() {
       // Create a new Date object for current time in UTC
       let now = new Date();
@@ -115,17 +110,8 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       // Calculate IST time
       let istTime = new Date(now.getTime() + istOffset);
       return istTime.toISOString().split('T')[0]
-      // // Format the IST time as needed (example: HH:mm:ss)
-      // let hours = istTime.getHours().toString().padStart(2, '0');
-      // let minutes = istTime.getMinutes().toString().padStart(2, '0');
-      // let seconds = istTime.getSeconds().toString().padStart(2, '0');
-      // console.log(`${hours}:${minutes}:${seconds}`)
-      // return `${hours}:${minutes}:${seconds}`;
   }
   
-  // Example usage:
-  console.log(`Current IST Time: ${getCurrentISTTime()}`);
-  console.log('from g: ',date)
 
   }, [isBottomSheetOpen])
   const handleAddCategory = async () => {
@@ -171,7 +157,6 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
     // const formatedAmount=
     console.log(date,new Date().toISOString().split('T')[0].replaceAll('-','/'))
     const istOffset = 5.5 * 60 * 60000;
-    console.log("DT DB ",date);
     const sendData=(date!=new Date(new Date().getTime() + istOffset).toISOString().split('T')[0].replaceAll('-','/'))?
     { amount: parseFloat(amount).toFixed(2), category_id: selectedCategory, user_id: userID,expense_date: `${date}T10:00:00.000Z`,expense_method:paymentMethod,created_at: `${date}T10:00:00.000Z`}
     // To Ask time
@@ -233,11 +218,9 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
       if (error) {
         alert(error);
       } else {
-        console.log("c-",categories);
         setCategories(categories.filter(category => category.id !== categoryToDelete.id));
         setCategoryToDelete(null);
         setIsModalVisible(false);
-        console.log(categories)
       }
     }
   };
@@ -290,7 +273,6 @@ const User:React.FC<UserPageProp> = ({userID,toggleScroll}) => {
 
   const handleDateChange = (selectedDate: string) => {
     setDate(selectedDate);
-    console.log(date)
   };
   
   return (

@@ -96,7 +96,7 @@ const CustomDate = ({ userID }: { userID: string }) => {
                 sum += expense.amount;
                 return acc;
             }, [] as any[]);
-
+            categorizedExpensesPieData.sort((a, b) => b.amount - a.amount);
             setTotal(sum);
             setData(categorizedExpensesPieData);
             setShowPie(true);

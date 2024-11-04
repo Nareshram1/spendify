@@ -107,7 +107,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       if (!groupedData[key][category]) {
         groupedData[key][category] = 0;
       }
-      console.log(parseFloat(expense.amount))
   
       groupedData[key][category] += parseFloat(expense.amount);
     });
@@ -130,8 +129,6 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       }
       return selectedDate; // Fallback
     })();
-    console.log('-/',groupedData)
-    console.log(formattedSelectedDate)
     const selectedData = groupedData[formattedSelectedDate] || {};
   
     if (period === 'week') {
@@ -173,9 +170,11 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
       };
     }
   
-    const pieData = Object.keys(selectedData).map((category) => ({
+    const pieData = Object.entries(selectedData)
+    .sort(([, amountA], [, amountB]) => amountB - amountA) // Sort by amount descending
+    .map(([category, amount]) => ({
       name: category,
-      amount: selectedData[category],
+      amount,
       color: getRandomColor(),
       legendFontColor: '#7F7F7F',
       legendFontSize: 15,

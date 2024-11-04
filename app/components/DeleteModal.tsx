@@ -84,17 +84,6 @@ const ExpenseActionModal = ({
     (new Date().getFullYear() - 5 + i).toString()
   );
 
-  // useEffect(() => {
-  //   if (expense) {
-  //     setFormData({
-  //       amount: expense.amount.toString(),
-  //       category_id: expense.category || '',
-  //       expense_method: expense.expense_method,
-        
-  //     });
-  //   }
-  //   console.log("EE.",expense);
-  // }, [expense]);
   useEffect(() => {
     
     const getCategories = async () => {
@@ -108,7 +97,6 @@ const ExpenseActionModal = ({
       } else if (data) {
         setCategories(data);
         const expenseDate = new Date(expense.created_at);
-        console.log("\n",expenseDate.getDate())
         setFormData({
           amount: expense.amount.toString(),
           category_id: data.find(category => category.name == expense.category)?.id || '',
@@ -122,9 +110,7 @@ const ExpenseActionModal = ({
 
     if (userID) {
       getCategories();
-      console.log("edit data c",categories);
     }
-    console.log("up ",formData)
   }, [userID,expense]);
   const handleUpdate = async () => {
     try {
@@ -133,7 +119,6 @@ const ExpenseActionModal = ({
         parseInt(formData.month) - 1,
         parseInt(formData.day) +1
       );
-      console.log("edit date",newDate.toISOString().split('T')[0].replaceAll('-','/'))
       const updatedExpense = {
         ...expense,
         amount: parseFloat(formData.amount),
@@ -205,7 +190,7 @@ const ExpenseActionModal = ({
           <TextInput
             style={styles.input}
             value={formData.amount}
-            onChangeText={(text) => {setFormData({ ...formData, amount: text });console.log("Form data",formData)}}
+            onChangeText={(text) => setFormData({ ...formData, amount: text })}
             keyboardType="numeric"
             placeholder="Enter amount"
           />
@@ -216,7 +201,7 @@ const ExpenseActionModal = ({
             <Picker
               selectedValue={formData.category_id}
               style={styles.picker}
-              onValueChange={(value) => {setFormData({ ...formData, category_id: value });console.log("Value",value)}}
+              onValueChange={(value) => setFormData({ ...formData, category_id: value })}
             >
               <Picker.Item label="Select a category" value="" />
               {categories.map((category) => (
