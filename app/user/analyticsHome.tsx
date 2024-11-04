@@ -177,7 +177,9 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
         .update({
           amount: updatedExpense.amount,
           category_id: updatedExpense.category_id,
-          expense_method: updatedExpense.expense_method
+          expense_method: updatedExpense.expense_method,
+          expense_date:updatedExpense.expense_date,
+          created_at:updatedExpense.expense_date,
         })
         .eq('id', updatedExpense.id);
   
