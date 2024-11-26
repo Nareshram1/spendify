@@ -3,8 +3,7 @@ import React, { useState,useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { supabase } from '../utils/supabaseClient';
-import { save, getValueFor, deleteValueFor } from '../utils/secureStore';
-import * as Linking from 'expo-linking';
+import { save, getValueFor } from '../utils/secureStore';
 import { StatusBar } from 'expo-status-bar';
 const Login = () => {
   const [email, setEmail] = useState('');

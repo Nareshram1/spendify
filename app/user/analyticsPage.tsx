@@ -16,7 +16,6 @@ interface GroupedData {
     [category: string]: number;
   };
 }
-let istOffset = 5.5 * 60 * 60000;
 const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
   const [selectOptions, setSelectOptions] = useState<string>('day');
   const [data, setData] = useState<any>({});

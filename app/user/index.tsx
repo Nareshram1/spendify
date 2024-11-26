@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, TextInput, Button,TouchableOpacity, ScrollView, ToastAndroid, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Alert, TextInput,TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
@@ -10,7 +10,6 @@ import LendingsAndBorrowingsPage from './lent';
 import { deleteValueFor, getValueFor, save, saveCategory } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import AnalyticsPage from './analyticsPage';
-
 import { Audio } from 'expo-av';
 import User from './home';
 import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,11 +21,6 @@ const MainPage = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [refresh, setRefresh] = useState(true);
   const [categories, setCategories] = useState([]);
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState<string>(() => {
-    const istOffset = 5.5 * 60 * 60000; // IST offset from UTC
-    return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
-});
   async function BootPlaySound() {
     const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/booting.mp3'));
     //@ts-ignore

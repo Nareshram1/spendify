@@ -11,7 +11,6 @@ import {
   SafeAreaView 
 } from 'react-native';
 import { supabase } from '../../utils/supabaseClient';
-import { LinearGradient } from 'expo-linear-gradient'; // Recommended to install expo-linear-gradient
 import { Ionicons } from '@expo/vector-icons'; // Recommended to install @expo/vector-icons
 
 interface Transaction {

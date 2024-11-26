@@ -28,7 +28,6 @@ const styles = StyleSheet.create({
         fontFamily:'cool',
         color:'white',
         fontSize:34,
-        // fontWeight:'600',
         letterSpacing:1,
       },
       AppBar:{

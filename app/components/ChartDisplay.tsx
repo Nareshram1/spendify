@@ -90,7 +90,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     marginTop: 10,
-    // fontWeight: 'bold',
     fontFamily:'cool',
   },
   noDataText: {
@@ -101,7 +100,6 @@ const styles = StyleSheet.create({
   legendContainer: {
     marginTop: 20,
     maxHeight: 100, 
-    // backgroundColor:'red',
   },
   legendItem: {
     flexDirection: 'row',
@@ -123,8 +121,6 @@ const styles = StyleSheet.create({
     fontFamily: 'cool',
   },
   chartText:{
-    // backgroundColor:'red',
-    // padding:5,
     borderRadius:5,
     width:'100%'
   },

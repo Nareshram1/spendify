@@ -7,7 +7,6 @@ import {
   TextInput,
   StyleSheet,
   Dimensions,
-  Pressable
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '@/utils/supabaseClient';

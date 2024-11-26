@@ -44,30 +44,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 24,
     fontFamily: 'cool',
-    letterSpacing: 2,
-    // fontWeight: 'bold',
+    letterSpacing: 2
   },
   pickerView:{
-    
-    // backgroundColor:'red',
-    // height:5,
+
     width: '50%',
   },
   picker: {
     color: 'white',
-    // fontFamily:'cool',
-    // fontWeight: 'bold',
     width: '70%',
     marginHorizontal:115,
-    // fontSize:24,
-    // borderColor: 'red',
-    
     backgroundColor:'#D22B2B',
     borderRadius:50,
   },
   pickerText:{
-    // fontFamily:'Kalam',
     color:'black',
-    // paddingLeft:100
   },
 });

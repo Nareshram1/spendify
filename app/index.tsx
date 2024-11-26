@@ -4,8 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useRouter } from 'expo-router';
-import { getValueFor } from '@/utils/secureStore';
 SplashScreen.preventAutoHideAsync();
 
 export default function Page() {

@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/utils/supabaseClient';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
-import { Ionicons,Feather } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import ExpenseActionModal from '../components/DeleteModal';
 
 interface AnalyticsProp {
