@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity,Pressable } from 'react-native'
+import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity,Pressable,Linking } from 'react-native'
 import React, { useState,useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -42,17 +42,15 @@ const Login = () => {
       }
     };
     const handleForgotPassword = async () => {
-      if (!email.trim()) {
-        alert('Please enter your email to reset your password.');
-        return;
-      }
-  
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-  
-      if (error) {
-        alert(error.message);
+      // Open the website
+      const url = 'https://spendify-hub.vercel.app/';
+      const supported = await Linking.canOpenURL(url);
+
+      if (supported) {
+        await Linking.openURL(url);
+        alert('You will be redirected to the password reset page on our website. Please follow the instructions there.');
       } else {
-        alert('Password reset email sent. Please check your inbox.');
+        alert(`Don't know how to open this URL: ${url}`);
       }
     };
   return (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -8,10 +8,13 @@ import {
   FlatList, 
   Modal, 
   Alert, 
-  SafeAreaView 
+  SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
+  Keyboard
 } from 'react-native';
 import { supabase } from '../../utils/supabaseClient';
-import { Ionicons } from '@expo/vector-icons'; // Recommended to install @expo/vector-icons
+import { Ionicons } from '@expo/vector-icons';
 
 interface Transaction {
   id: number;
@@ -19,6 +22,7 @@ interface Transaction {
   person_name: string;
   date: string;
   user_id?: string;
+  description?: string;
 }
 
 interface LendingsAndBorrowingsPageProp {
@@ -28,16 +32,22 @@ interface LendingsAndBorrowingsPageProp {
 const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ userID }) => {
   const [amount, setAmount] = useState<string>('');
   const [personName, setPersonName] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
   const [type, setType] = useState<'lending' | 'borrowing'>('lending');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isAddingTransaction, setIsAddingTransaction] = useState<boolean>(false);
 
   useEffect(() => {
     fetchTransactions();
   }, [type, userID]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async (showLoader = true) => {
     try {
+      if (showLoader) setIsLoading(true);
+      
       let { data, error } = await supabase
         .from(type === 'lending' ? 'lendings' : 'borrowings')
         .select('*')
@@ -48,122 +58,264 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
       if (data) setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      // Alert.alert('Error', 'Failed to fetch transactions. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
+  }, [type, userID]);
+
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetchTransactions(false);
+  }, [fetchTransactions]);
+
+  const handleTypeChange = (newType: 'lending' | 'borrowing') => {
+    if (newType !== type) {
+      setType(newType);
+      setIsLoading(true);
+    }
+  };
+
+  const validateInput = (): boolean => {
+    if (!amount.trim()) {
+      Alert.alert('Validation Error', 'Please enter an amount');
+      return false;
+    }
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      Alert.alert('Validation Error', 'Please enter a valid positive amount');
+      return false;
+    }
+    
+    if (!personName.trim()) {
+      Alert.alert('Validation Error', 'Please enter person\'s name');
+      return false;
+    }
+    
+    return true;
   };
 
   const addTransaction = async () => {
-    if (!amount || !personName) {
-      Alert.alert('Error', 'Please enter amount and person name');
-      return;
-    }
-
+    if (!validateInput()) return;
+    
     try {
+      setIsAddingTransaction(true);
+      Keyboard.dismiss();
+      
+      const transactionData = {
+        user_id: userID,
+        amount: parseFloat(amount),
+        person_name: personName.trim(),
+        description: description.trim() || null
+      };
+
       const { data, error } = await supabase
         .from(type === 'lending' ? 'lendings' : 'borrowings')
-        .insert([{ user_id: userID, amount: parseFloat(amount), person_name: personName }])
+        .insert([transactionData])
         .select("*");
 
       if (error) throw error;
+      
       if (data) {
+        // Reset form
         setAmount('');
         setPersonName('');
+        setDescription('');
         setIsModalVisible(false);
-        fetchTransactions();
+        
+        // Refresh transactions
+        await fetchTransactions(false);
+        
+        // Alert.alert(
+        //   'Success', 
+        //   `${type === 'lending' ? 'Lending' : 'Borrowing'} transaction added successfully`
+        // );
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
-      Alert.alert('Error', 'Failed to add transaction');
+      // Alert.alert('Error', 'Failed to add transaction. Please try again.');
+    } finally {
+      setIsAddingTransaction(false);
     }
   };
 
-  const deleteTransaction = async (transactionId: number) => {
-    try {
-      const { error } = await supabase
-        .from(type === 'lending' ? 'lendings' : 'borrowings')
-        .delete()
-        .eq('id', transactionId)
-        .single();
+  const deleteTransaction = async (transactionId: number, personName: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete the transaction with ${personName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from(type === 'lending' ? 'lendings' : 'borrowings')
+                .delete()
+                .eq('id', transactionId);
 
-      if (error) throw error;
+              if (error) throw error;
 
-      setTransactions(prevTransactions =>
-        prevTransactions.filter(transaction => transaction.id !== transactionId)
-      );
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
-      Alert.alert('Error', 'Failed to delete transaction');
-    }
+              setTransactions(prevTransactions =>
+                prevTransactions.filter(transaction => transaction.id !== transactionId)
+              );
+              
+              Alert.alert('Success', 'Transaction deleted successfully');
+            } catch (error) {
+              console.error('Error deleting transaction:', error);
+              Alert.alert('Error', 'Failed to delete transaction');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const getTotalAmount = (): number => {
+    return transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   };
 
   const renderTransactionItem = ({ item }: { item: Transaction }) => (
     <View style={styles.transactionCard}>
       <View style={styles.transactionContent}>
-        <Text style={styles.personName}>{item.person_name}</Text>
-        <Text style={styles.amountText}>
-          {type === 'lending' ? '+ ' : '- '}
-          ${item.amount.toFixed(2)}
-        </Text>
+        <View style={styles.transactionInfo}>
+          <Text style={styles.personName}>{item.person_name}</Text>
+          {item.description && (
+            <Text style={styles.descriptionText}>{item.description}</Text>
+          )}
+          <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+        </View>
+        <View style={styles.amountContainer}>
+          <Text style={[
+            styles.amountText,
+            { color: type === 'lending' ? '#4CAF50' : '#FF6B6B' }
+          ]}>
+            {type === 'lending' ? '+' : '-'}₹{item.amount.toFixed(2)}
+          </Text>
+        </View>
       </View>
       <TouchableOpacity 
         style={styles.deleteIconContainer} 
-        onPress={() => deleteTransaction(item.id)}
+        onPress={() => deleteTransaction(item.id, item.person_name)}
       >
-        <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
+        <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
       </TouchableOpacity>
+    </View>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#0ac7b8" />
+      <Text style={styles.loadingText}>Loading transactions...</Text>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyListContainer}>
+      <Ionicons 
+        name={type === 'lending' ? 'cash-outline' : 'card-outline'} 
+        size={64} 
+        color="rgba(255,255,255,0.3)" 
+      />
+      <Text style={styles.emptyListText}>
+        No {type === 'lending' ? 'lending' : 'borrowing'} transactions yet
+      </Text>
+      <Text style={styles.emptyListSubtext}>
+        Tap the button below to add your first transaction
+      </Text>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
+      <Text style={styles.headerTitle}>
+        {type === 'lending' ? 'Money You Lent' : 'Money You Borrowed'}
+      </Text>
 
-        <Text style={styles.headerTitle}>
-          {type === 'lending' ? 'Money You Lent' : 'Money You Borrowed'}
-        </Text>
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.toggleButton, 
+            type === 'lending' && styles.activeToggleButton
+          ]} 
+          onPress={() => handleTypeChange('lending')}
+        >
+          <Text style={[
+            styles.toggleButtonText,
+            type === 'lending' && styles.activeToggleButtonText
+          ]}>Lend</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.toggleButton, 
+            type === 'borrowing' && styles.activeToggleButton
+          ]} 
+          onPress={() => handleTypeChange('borrowing')}
+        >
+          <Text style={[
+            styles.toggleButtonText,
+            type === 'borrowing' && styles.activeToggleButtonText
+          ]}>Borrow</Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.toggleButton, 
-              type === 'lending' && styles.activeToggleButton
-            ]} 
-            onPress={() => setType('lending')}
-          >
-            <Text style={styles.toggleButtonText}>Lend</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[
-              styles.toggleButton, 
-              type === 'borrowing' && styles.activeToggleButton
-            ]} 
-            onPress={() => setType('borrowing')}
-          >
-            <Text style={styles.toggleButtonText}>Borrow</Text>
-          </TouchableOpacity>
+      {/* Total Amount Summary */}
+      {transactions.length > 0 && (
+        <View style={styles.summaryContainer}>
+          <Text style={styles.summaryLabel}>
+            Total {type === 'lending' ? 'Lent' : 'Borrowed'}:
+          </Text>
+          <Text style={[
+            styles.summaryAmount,
+            { color: type === 'lending' ? '#4CAF50' : '#FF6B6B' }
+          ]}>
+            ₹{getTotalAmount().toFixed(2)}
+          </Text>
         </View>
+      )}
 
+      {isLoading ? (
+        renderLoadingState()
+      ) : (
         <FlatList
           data={transactions}
           renderItem={renderTransactionItem}
           keyExtractor={(item) => item.id.toString()}
-          ListEmptyComponent={
-            <View style={styles.emptyListContainer}>
-              <Text style={styles.emptyListText}>
-                No {type === 'lending' ? 'Lending' : 'Borrowing'} Transactions
-              </Text>
-            </View>
-          }
+          ListEmptyComponent={renderEmptyState}
           contentContainerStyle={styles.flatListContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={['#0ac7b8']}
+              tintColor="#0ac7b8"
+            />
+          }
         />
+      )}
 
-        <TouchableOpacity 
-          style={styles.addTransactionButton} 
-          onPress={() => setIsModalVisible(true)}
-        >
-          <Ionicons name="add-circle" size={24} color="white" />
-          <Text style={styles.addTransactionButtonText}>
-            Add {type === 'lending' ? 'Lending' : 'Borrowing'}
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.addTransactionButton} 
+        onPress={() => setIsModalVisible(true)}
+      >
+        <Ionicons name="add-circle" size={24} color="white" />
+        <Text style={styles.addTransactionButtonText}>
+          Add {type === 'lending' ? 'Lending' : 'Borrowing'}
+        </Text>
+      </TouchableOpacity>
 
       <Modal 
         visible={isModalVisible} 
@@ -176,33 +328,57 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
             <Text style={styles.modalTitle}>
               {type === 'lending' ? 'Add Lending' : 'Add Borrowing'}
             </Text>
+            
             <TextInput
               style={styles.inputField}
-              placeholder="Amount"
+              placeholder="Amount (₹)"
               placeholderTextColor="#888"
               keyboardType="numeric"
               value={amount}
               onChangeText={setAmount}
+              editable={!isAddingTransaction}
             />
+            
             <TextInput
               style={styles.inputField}
               placeholder="Person's Name"
               placeholderTextColor="#888"
               value={personName}
               onChangeText={setPersonName}
+              editable={!isAddingTransaction}
             />
+            
+            <TextInput
+              style={[styles.inputField, styles.descriptionInput]}
+              placeholder="Description (optional)"
+              placeholderTextColor="#888"
+              value={description}
+              onChangeText={setDescription}
+              multiline={true}
+              numberOfLines={3}
+              textAlignVertical="top"
+              editable={!isAddingTransaction}
+            />
+            
             <View style={styles.modalButtonContainer}>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton]} 
                 onPress={() => setIsModalVisible(false)}
+                disabled={isAddingTransaction}
               >
-                <Text style={styles.modalButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={[styles.modalButton, styles.addButton]} 
                 onPress={addTransaction}
+                disabled={isAddingTransaction}
               >
-                <Text style={styles.modalButtonText}>Add</Text>
+                {isAddingTransaction ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -217,11 +393,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#171223',
     padding: 10,
-  },
-  gradientBackground: {
-    flex: 1,
-    paddingHorizontal: 15,
-    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 24,
@@ -248,11 +419,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   toggleButtonText: {
-    color: 'black',
+    color: 'white',
     fontWeight: 'bold',
+  },
+  activeToggleButtonText: {
+    color: 'black',
+  },
+  summaryContainer: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  summaryAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    marginTop: 10,
+    fontSize: 16,
   },
   flatListContainer: {
     paddingBottom: 20,
+    flexGrow: 1,
   },
   transactionCard: {
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -266,26 +469,55 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  transactionInfo: {
+    flex: 1,
   },
   personName: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  dateText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  amountContainer: {
+    alignItems: 'flex-end',
   },
   amountText: {
-    color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
   deleteIconContainer: {
-    marginLeft: 10,
+    marginLeft: 15,
+    padding: 5,
   },
   emptyListContainer: {
+    flex: 1,
     alignItems: 'center',
-    marginTop: 50,
+    justifyContent: 'center',
+    paddingVertical: 50,
   },
   emptyListText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  emptyListSubtext: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: 'center',
   },
   addTransactionButton: {
     backgroundColor: '#0ac7b8',
@@ -295,13 +527,14 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 20,
     marginBottom: 20,
-    width:"70%",
-    marginHorizontal:"15%"
+    width: "70%",
+    marginHorizontal: "15%",
   },
   addTransactionButtonText: {
     color: 'white',
     marginLeft: 10,
     fontWeight: 'bold',
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
@@ -310,7 +543,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '85%',
+    width: '90%',
     backgroundColor: 'white',
     borderRadius: 15,
     padding: 20,
@@ -320,6 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
+    color: '#333',
   },
   inputField: {
     width: '100%',
@@ -327,11 +561,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
+    fontSize: 16,
+  },
+  descriptionInput: {
+    height: 80,
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    marginTop: 10,
   },
   modalButton: {
     flex: 1,
@@ -342,6 +581,10 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: '#E0E0E0',
+  },
+  cancelButtonText: {
+    fontWeight: 'bold',
+    color: '#666',
   },
   addButton: {
     backgroundColor: '#0ac7b8',

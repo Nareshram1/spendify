@@ -4,9 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabaseClient';
 import { Link, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+
 const SignUp = () => {
   const [fullName, setFullName] = useState('');
-  // const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,22 +16,47 @@ const SignUp = () => {
       alert('Passwords do not match');
       return;
     }
-    const { error } = await supabase.auth.signUp({
+
+    // First, sign up the user with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName
+          full_name: fullName // This is for Supabase Auth's user metadata
         },
       },
     });
 
-    if (error) {
-      alert(error.message);
+    if (authError) {
+      alert(authError.message);
     } else {
-      alert('check mail to confirm and cum back')
-      router.replace('/')
-      // Navigate to login screen
+      // If authentication is successful, insert user data into your 'users' table
+      if (authData.user) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([
+            {
+              user_id: authData.user.id, // Supabase Auth user ID
+              name: fullName,
+              email: email,
+              created_at: new Date().toISOString(), // Or use a Supabase default for this column
+            },
+          ]);
+
+        if (insertError) {
+          console.error('Error inserting user data into "users" table:', insertError.message);
+          alert('Account created, but failed to save user info. Please contact support.');
+          // You might want to handle rollback or allow the user to retry
+        } else {
+          // alert('Check your email to confirm and then come back to sign in!');
+          router.replace('/');
+        }
+      } else {
+        // This case might occur if the user already exists and a confirmation email is sent
+        // alert('Check your email to confirm and then come back to sign in!');
+        router.replace('/');
+      }
     }
   };
 
@@ -40,7 +65,7 @@ const SignUp = () => {
       <StatusBar backgroundColor='#171223'/>
       <Text style={styles.mainText}>Sign Up</Text>
       <Text style={styles.secondaryText}>Create an account to get started</Text>
-      
+
       <View style={styles.formContainer}>
         <View style={styles.inputContainer}>
           <Ionicons name="person" size={24} color="white" style={styles.icon} />
@@ -60,6 +85,8 @@ const SignUp = () => {
             placeholderTextColor="white"
             onChangeText={setEmail}
             value={email}
+            keyboardType="email-address" // Hint for email keyboard
+            autoCapitalize="none" // Prevent auto-capitalization for emails
           />
         </View>
         <View style={styles.inputContainer}>
@@ -84,7 +111,7 @@ const SignUp = () => {
             secureTextEntry
           />
         </View>
-        <Pressable style={styles.signUpButton} onPress={()=>{handleSignUp()}}>
+        <Pressable style={styles.signUpButton} onPress={handleSignUp}>
           <Text style={styles.buttonText}>Sign Up</Text>
         </Pressable>
       </View>
