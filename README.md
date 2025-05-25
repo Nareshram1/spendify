@@ -2,7 +2,7 @@
 
 Spendify is an expense tracker app that allows you to monitor your daily expenses category-wise. The app provides a detailed breakdown of your expenses and insights to help you manage your budget better.
 
-Download the latest version at [text](https://fuck-playstore.vercel.app/)
+Download the latest version at [Fuck playstore](https://fuck-playstore.vercel.app/)
 ## Screenshots
 
 ![App Screenshot](./screenshots/spendify_sc.png)
