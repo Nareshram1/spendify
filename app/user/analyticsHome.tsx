@@ -2,28 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Modal, Text, Pressable, FlatList, StyleSheet, TouchableOpacity, Dimensions, GestureResponderEvent } from 'react-native';
 import DatePicker from 'react-native-modern-datepicker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { supabase } from '@/utils/supabaseClient';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import ExpenseActionModal from '../components/DeleteModal';
 import BudgetInputModal from '../components/BudgetInputModal';
+import { ExpenseService, UserService, type Expense, type FetchExpensesForDateResult } from '@/utils/database';
 
 interface AnalyticsProp {
   refresh: boolean;
-}
-
-interface Expense {
-  id: string;
-  amount: number;
-  created_at: string; // ISO date string
-  expense_method: string;
-  category: string; // Make category nullable
-}
-
-interface FetchExpensesForTodayResult {
-  expenses: Expense[];
-  total: number;
 }
 
 const { width } = Dimensions.get('window');
@@ -45,6 +32,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
     return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
   });
   const [tempSelectedDate, setTempSelectedDate] = useState(date);
+  
   const handleDateSelect = (selectedDate: string) => {
     setTempSelectedDate(selectedDate); // Update temporary state
   };
@@ -53,6 +41,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
       setDate(tempSelectedDate); // Update actual date state
       setIsDatePickerModalVisible(false); // Close modal
   };
+
   // --- Initial User ID Fetch ---
   useEffect(() => {
     const getUserID = async () => {
@@ -70,74 +59,12 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   }, []);
 
   // --- Expense Fetching Functions (Memoized) ---
-  const fetchExpensesForDate = useCallback(async (selectedDate: string): Promise<FetchExpensesForTodayResult> => {
-    if (!userID) {
-      console.warn('userID not set, cannot fetch expenses.');
-      return { expenses: [], total: 0 };
-    }
-
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        id,
-        amount,
-        created_at,
-        expense_method,
-        category:categories ( name )
-      `)
-      .eq('user_id', userID)
-      .gte('created_at', `${selectedDate}T00:00:00.000Z`)
-      .lt('created_at', `${selectedDate}T23:59:59.999Z`);
-
-    if (error) {
-      console.error('Error fetching expenses for the selected date:', error.message);
-      return { expenses: [], total: 0 };
-    } else {
-      const aggregatedExpenses = data.reduce((acc: any, item: any) => {
-        const existingCategory = acc.find((exp: any) => exp.category === item.category?.name); // Optional chaining
-        if (existingCategory) {
-          existingCategory.amount += item.amount;
-        } else {
-          acc.push({
-            id: item.id,
-            amount: item.amount,
-            created_at: item.created_at,
-            expense_method: item.expense_method,
-            category: item.category?.name || 'Unknown', // Optional chaining
-          });
-        }
-        return acc;
-      }, []);
-
-      const total = aggregatedExpenses.reduce((sum: number, expense: Expense) => sum + expense.amount, 0);
-      return { expenses: aggregatedExpenses, total };
-    }
+  const fetchExpensesForDate = useCallback(async (selectedDate: string): Promise<FetchExpensesForDateResult> => {
+    return await ExpenseService.fetchExpensesForDate(userID, selectedDate);
   }, [userID]);
 
   const fetchTotalExpenseForMonth = useCallback(async (): Promise<number> => {
-    if (!userID) {
-      console.warn('userID not set, cannot fetch month expenses.');
-      return 0;
-    }
-
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
-
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('amount')
-      .eq('user_id', userID)
-      .gte('created_at', startOfMonth)
-      .lt('created_at', endOfMonth);
-
-    if (error) {
-      console.error('Error fetching total expenses for the current month:', error.message);
-      return 0;
-    } else {
-      const total = data.reduce((sum: number, expense: { amount: number }) => sum + expense.amount, 0);
-      return total;
-    }
+    return await ExpenseService.fetchTotalExpenseForMonth(userID);
   }, [userID]);
 
   // --- Budget Fetching Function (Memoized) ---
@@ -146,24 +73,8 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
       console.warn('userID not set, cannot fetch budget.');
       return;
     }
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('budget')
-        .eq('user_id', userID); // Assuming 'id' is the primary key for user_id in 'users' table
-
-      if (error) {
-        console.error('Error fetching user budget:', error.message);
-        return;
-      }
-      if (data && data.length > 0) {
-        setBudget(data[0].budget);
-      } else {
-        setBudget(0); // Set to 0 if no budget is found
-      }
-    } catch (error) {
-      console.error('Error fetching user budget:', error);
-    }
+    const budgetAmount = await UserService.getUserBudget(userID);
+    setBudget(budgetAmount);
   }, [userID]);
 
   // --- Consolidated Data Fetching Function ---
@@ -171,7 +82,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   const fetchData = useCallback(async () => {
     if (userID) {
       // Fetch daily expenses
-      const result: FetchExpensesForTodayResult = await fetchExpensesForDate(date);
+      const result: FetchExpensesForDateResult = await fetchExpensesForDate(date);
       setExpenses(result.expenses);
       setTotal(result.total);
 
@@ -211,66 +122,38 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
   const handleDeleteExpense = async () => {
     if (!selectedExpense) return;
 
-    try {
-      const { error } = await supabase.from('expenses').delete().eq('id', selectedExpense.id);
-
-      if (error) {
-        console.error('Error deleting expense:', error.message);
-        return;
-      }
-      console.log('Expense deleted successfully.');
+    const success = await ExpenseService.deleteExpense(selectedExpense.id);
+    if (success) {
       handleCloseDeleteModal();
       fetchData(); // Call fetchData to refresh all data
-    } catch (error) {
-      console.error('Error deleting expense:', error);
     }
   };
 
   const handleUpdateExpense = async (updatedExpense: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .update({
-          amount: updatedExpense.amount,
-          category_id: updatedExpense.category_id,
-          expense_method: updatedExpense.expense_method,
-          created_at: updatedExpense.expense_date, // Assuming expense_date is the correct field for the expense timestamp
-        })
-        .eq('id', updatedExpense.id);
+    const success = await ExpenseService.updateExpense(updatedExpense.id, {
+      amount: updatedExpense.amount,
+      category_id: updatedExpense.category_id,
+      expense_method: updatedExpense.expense_method,
+      expense_date: updatedExpense.expense_date,
+    });
 
-      if (error) {
-        console.error('Error updating expense:', error.message);
-        return;
-      }
-      console.log('Expense updated successfully:', data);
+    if (success) {
       fetchData(); // Call fetchData to refresh all data
-    } catch (error) {
-      console.error('Error updating expense:', error);
     }
   };
 
   const handleSaveBudget = async (newBudget: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .update({ budget: newBudget })
-        .eq('user_id', userID); 
-
-      if (error) {
-        console.error('Error updating budget in Supabase:', error.message);
-        return;
-      }
-
-      console.log('Budget successfully updated in Supabase:', data);
+    const success = await UserService.updateUserBudget(userID, newBudget);
+    if (success) {
       setBudget(newBudget); // Update local budget state, which will trigger the budget calculation useEffect
       setIsBudgetPickerModalVisible(false); // Close the modal
-    } catch (error) {
-      console.error('An unexpected error occurred while saving budget:', error);
     }
   };
+
   useEffect(() => {
-    console.log("date picker modal",isDatePickerModalVisible);
+    console.log("date picker modal", isDatePickerModalVisible);
   }, [isDatePickerModalVisible])
+
   return (
     <SafeAreaProvider style={styles.safeArea}>
       {/* Header */}

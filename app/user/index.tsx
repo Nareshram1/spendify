@@ -2,17 +2,19 @@ import { StyleSheet, Text, View, Alert, TextInput,TouchableOpacity, ScrollView, 
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
-import { supabase } from '../../utils/supabaseClient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import PagerView from 'react-native-pager-view';
 import LendingsAndBorrowingsPage from './lent';
-import { deleteValueFor, getValueFor, save, saveCategory } from '@/utils/secureStore';
+import {getValueFor, save } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import AnalyticsPage from './analyticsPage';
 import { Audio } from 'expo-av';
 import User from './home';
 import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Import the new utility functions
+import { fetchAndSaveCategories, loadStoredCategories, syncLocalExpenses } from '@/utils/database';
 
 const MainPage = () => {
   const [sound, setSound] = useState();
@@ -21,23 +23,49 @@ const MainPage = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [refresh, setRefresh] = useState(true);
   const [categories, setCategories] = useState([]);
-  async function BootPlaySound() {
-    const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/booting.mp3'));
+  
+async function BootPlaySound() {
+  // 1) Create the Sound object (but don’t start “stop” immediately).
+  const { sound } = await Audio.Sound.createAsync(
+    require('../../assets/audio/booting.mp3'),
+    { shouldPlay: true } // start playing as soon as it’s loaded
+  );
+  //@ts-ignore
+  setSound(sound); // so your cleanup-effect can still unload it if needed
+
+  // 2) Register a status-update listener. As soon as didJustFinish === true,
+  //    we unload the sound so it frees memory.
+  sound.setOnPlaybackStatusUpdate((status) => {
     //@ts-ignore
-    setSound(sound);
-    await sound.playAsync();
-  }
+    if (status.didJustFinish) {
+      sound.unloadAsync();
+    }
+  });
+}
+
+
   async function SuccessPlaySound() {
-    const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/success.mp3'));
+    // Same pattern: create + auto‐play
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/audio/success.mp3'),
+      { shouldPlay: true }
+    );
     //@ts-ignore
     setSound(sound);
-    await sound.playAsync();
+
+    sound.setOnPlaybackStatusUpdate((status) => {
+      //@ts-ignore
+      if (status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
   }
 
   useEffect(() => {
     //@ts-ignore
     return sound ? () => sound.unloadAsync() : undefined;
   }, [sound]);
+
   //@ts-ignore
   const toggleScroll = (value) => setScroll(value);
 
@@ -55,24 +83,29 @@ const MainPage = () => {
     checkLoggedIn();
     playSound();
 
+    // Refactored category sync using new utility function
     const syncCategory = async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('user_id', await getValueFor('user_id'));
-      if (error) console.error(error);
+      const data = await fetchAndSaveCategories();
       if (data) {
-        await saveCategory('categories', data);
         //@ts-ignore
         setCategories(data);
       }
     };
 
+    // Refactored category loading using new utility function
     const loadCategories = async () => {
-      const storedCategories = await getValueFor('categories');
+      const storedCategories = await loadStoredCategories();
       if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
+        //@ts-ignore
+        setCategories(storedCategories);
       }
+    };
+
+    // Refactored sync function using new utility
+    const syncData = async () => {
+      await syncLocalExpenses();
+      // await SuccessPlaySound();
+      setRefresh(true);
     };
 
     // Check internet connection and load categories accordingly
@@ -80,8 +113,7 @@ const MainPage = () => {
       if (state.isConnected) {
         setIsOffline(false);
         syncCategory();
-        syncLocalData();
-        
+        syncData();
       } else {
         setIsOffline(true);
         loadCategories();
@@ -91,58 +123,32 @@ const MainPage = () => {
     return () => unsubscribe();
   }, []);
 
-  const syncLocalData = async () => {
-    try {
-
-      const localData = await getValueFor('expense');
-      if (localData) {
-        const data = JSON.parse(localData);
-        for (const item of data) {
-          await supabase.from('expenses')
-          .insert([item]);
-        }
-
-        await deleteValueFor('expense');
-        await SuccessPlaySound();
-        alert('Local Data synced.')
-        setRefresh(true);
-      }
-    } catch (error) {
-      alert('Error in syncing.')
-      console.error('Error syncing data with Supabase:', error);
-    }
-  };
-
-
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       {isOffline ? (
-        
-          <PagerView style={styles.container} initialPage={0}> 
-            <OfflineUIShow
+        <PagerView style={styles.container} initialPage={0}> 
+          <OfflineUIShow
             categories={categories}
-            />
-            <OfflineUI 
+          />
+          <OfflineUI 
             categories={categories}
             userID={userID}
           />
-
-          </PagerView>
+        </PagerView>
       ) : (
-        
-          refresh &&
+        refresh &&
         <PagerView style={styles.container} initialPage={1} scrollEnabled={scroll}>
           <LendingsAndBorrowingsPage userID={userID} />
           <User userID={userID} toggleScroll={toggleScroll} />
           <AnalyticsPage userID={userID} />
         </PagerView>
-        
       )}
     </View>
   );
 };
-const OfflineUIShow=(categories:any)=>{
+
+const OfflineUIShow = (categories: any) => {
   const [expenses, setExpenses] = useState([]);
 
   const loadOfflineExpenses = async () => {
@@ -156,35 +162,35 @@ const OfflineUIShow=(categories:any)=>{
       console.error('Error loading offline expenses:', error);
     }
   };
-  useEffect(() => {
 
+  useEffect(() => {
     loadOfflineExpenses();
-    console.log('lc ',expenses)
+    console.log('lc ', expenses)
   }, []);
 
   const calculateTotal = () => {
     //@ts-ignore
     return expenses.reduce((total, expense) => total + parseFloat(expense.amount), 0);
   };
+
   //@ts-ignore
   const getCategoryName = (categoryId) => {
     //@ts-ignore
     const category = categories.categories.find(cat => cat.id === categoryId);
     return category ? category.name : 'Unknown';
-    // return "temp";
   };
-  return(
+
+  return (
     <View style={{backgroundColor:'#171223',minHeight:'100%',padding:5,paddingTop:30}}>
       <GestureHandlerRootView>
-        {/* <Text style={{color:'white',fontSize:24,fontWeight:'500',margin:15}}>Offline Data</Text> */}
         <View style={styles.offlineBanner}>
-        <MaterialIcons name="wifi-off" size={24} color="white" />
-        <Text style={styles.offlineText}>Offline Expenses</Text>
-        <Pressable style={{marginHorizontal:150}} onPress={loadOfflineExpenses}>
-         <MaterialIcons name="refresh" size={24} color="white"  />
-        </Pressable>
-      </View>
-      <FlatList
+          <MaterialIcons name="wifi-off" size={24} color="white" />
+          <Text style={styles.offlineText}>Offline Expenses</Text>
+          <Pressable style={{marginHorizontal:150}} onPress={loadOfflineExpenses}>
+            <MaterialIcons name="refresh" size={24} color="white"  />
+          </Pressable>
+        </View>
+        <FlatList
           data={expenses}
           ListEmptyComponent={() => (
             <View style={{alignItems: 'center', justifyContent: 'center', flex: 1, padding: 20}}>
@@ -223,10 +229,11 @@ const OfflineUIShow=(categories:any)=>{
           )}
           contentContainerStyle={styles.listContainer}
         />
-        </GestureHandlerRootView>
+      </GestureHandlerRootView>
     </View>
-    )
+  )
 }
+
 //@ts-ignore
 const OfflineUI = ({ categories, userID }) => {
   const [category, setCategory] = useState('');
@@ -335,7 +342,6 @@ const OfflineUI = ({ categories, userID }) => {
     </ScrollView>
   );
 };
-
 
 export default MainPage;
 

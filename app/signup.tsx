@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Pressable } from 'react-native';
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../utils/supabaseClient';
+import { signUpUser } from '../utils/auth';
 import { Link, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -17,46 +17,11 @@ const SignUp = () => {
       return;
     }
 
-    // First, sign up the user with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName // This is for Supabase Auth's user metadata
-        },
-      },
-    });
-
-    if (authError) {
-      alert(authError.message);
-    } else {
-      // If authentication is successful, insert user data into your 'users' table
-      if (authData.user) {
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert([
-            {
-              user_id: authData.user.id, // Supabase Auth user ID
-              name: fullName,
-              email: email,
-              created_at: new Date().toISOString(), // Or use a Supabase default for this column
-            },
-          ]);
-
-        if (insertError) {
-          console.error('Error inserting user data into "users" table:', insertError.message);
-          alert('Account created, but failed to save user info. Please contact support.');
-          // You might want to handle rollback or allow the user to retry
-        } else {
-          // alert('Check your email to confirm and then come back to sign in!');
-          router.replace('/');
-        }
-      } else {
-        // This case might occur if the user already exists and a confirmation email is sent
-        // alert('Check your email to confirm and then come back to sign in!');
-        router.replace('/');
-      }
+    try {
+      await signUpUser(email, password, fullName);
+      router.replace('/');
+    } catch (error: any) {
+      alert(error.message);
     }
   };
 

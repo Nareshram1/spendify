@@ -13,7 +13,11 @@ import {
   RefreshControl,
   Keyboard
 } from 'react-native';
-import { supabase } from '../../utils/supabaseClient';
+import {
+  fetchTransactions as fetchTransactionsFromDB,
+  addTransaction as addTransactionToDB,
+  deleteTransaction as deleteTransactionFromDB,
+} from '../../utils/database';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Transaction {
@@ -47,18 +51,10 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
   const fetchTransactions = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setIsLoading(true);
-      
-      let { data, error } = await supabase
-        .from(type === 'lending' ? 'lendings' : 'borrowings')
-        .select('*')
-        .eq('user_id', userID)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      if (data) setTransactions(data);
+      const data = await fetchTransactionsFromDB(userID, type);
+      setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      // Alert.alert('Error', 'Failed to fetch transactions. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -97,82 +93,59 @@ const LendingsAndBorrowingsPage: React.FC<LendingsAndBorrowingsPageProp> = ({ us
     return true;
   };
 
-  const addTransaction = async () => {
-    if (!validateInput()) return;
-    
-    try {
-      setIsAddingTransaction(true);
-      Keyboard.dismiss();
-      
-      const transactionData = {
-        user_id: userID,
-        amount: parseFloat(amount),
-        person_name: personName.trim(),
-        description: description.trim() || null
-      };
+const addTransaction = async () => {
+  if (!validateInput()) return;
 
-      const { data, error } = await supabase
-        .from(type === 'lending' ? 'lendings' : 'borrowings')
-        .insert([transactionData])
-        .select("*");
+  try {
+    setIsAddingTransaction(true);
+    Keyboard.dismiss();
 
-      if (error) throw error;
-      
-      if (data) {
-        // Reset form
-        setAmount('');
-        setPersonName('');
-        setDescription('');
-        setIsModalVisible(false);
-        
-        // Refresh transactions
-        await fetchTransactions(false);
-        
-        // Alert.alert(
-        //   'Success', 
-        //   `${type === 'lending' ? 'Lending' : 'Borrowing'} transaction added successfully`
-        // );
-      }
-    } catch (error) {
-      console.error('Error adding transaction:', error);
-      // Alert.alert('Error', 'Failed to add transaction. Please try again.');
-    } finally {
-      setIsAddingTransaction(false);
-    }
-  };
+    const transactionData = {
+      amount: parseFloat(amount),
+      person_name: personName.trim(),
+      description: description.trim() ? description.trim() : undefined,
+    };
 
-  const deleteTransaction = async (transactionId: number, personName: string) => {
-    Alert.alert(
-      'Confirm Delete',
-      `Are you sure you want to delete the transaction with ${personName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from(type === 'lending' ? 'lendings' : 'borrowings')
-                .delete()
-                .eq('id', transactionId);
+    await addTransactionToDB(userID, type, transactionData);
+    setAmount('');
+    setPersonName('');
+    setDescription('');
+    setIsModalVisible(false);
+    await fetchTransactions(false);
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+  } finally {
+    setIsAddingTransaction(false);
+  }
+};
 
-              if (error) throw error;
 
-              setTransactions(prevTransactions =>
-                prevTransactions.filter(transaction => transaction.id !== transactionId)
-              );
-              
-              Alert.alert('Success', 'Transaction deleted successfully');
-            } catch (error) {
-              console.error('Error deleting transaction:', error);
-              Alert.alert('Error', 'Failed to delete transaction');
-            }
+const deleteTransaction = async (transactionId: number, personName: string) => {
+  Alert.alert(
+    'Confirm Delete',
+    `Are you sure you want to delete the transaction with ${personName}?`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteTransactionFromDB(type, transactionId);
+            setTransactions(prev =>
+              prev.filter(transaction => transaction.id !== transactionId)
+            );
+            Alert.alert('Success', 'Transaction deleted successfully');
+          } catch (error) {
+            console.error('Error deleting transaction:', error);
+            Alert.alert('Error', 'Failed to delete transaction');
           }
-        }
-      ]
-    );
-  };
+        },
+      },
+    ]
+  );
+};
+
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);

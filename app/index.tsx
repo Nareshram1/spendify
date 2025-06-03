@@ -12,6 +12,9 @@ export default function Page() {
     Kalam: require('../assets/fonts/Kalam-Regular.ttf'),
     cool: require('../assets/fonts/library-3-am.3am.otf'),
     Roboto: require('../assets/fonts/Roboto-Regular.ttf'),
+    InterRegular : require('../assets/fonts/Inter_24pt-Regular.ttf'),
+    InterSemiBold : require('../assets/fonts/Inter_24pt-SemiBold.ttf'),
+    InterBold : require('../assets/fonts/Inter_24pt-Bold.ttf'),
     ...FontAwesome.font,
   });
 

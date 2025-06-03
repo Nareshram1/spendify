@@ -1,12 +1,19 @@
+// ChartDisplay.tsx
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { PieChart, LineChart } from 'react-native-chart-kit';
 
 interface ChartDisplayProps {
   loading: boolean;
   isPieData: boolean;
-  data: any;
+  data: { // Defined a more specific type for 'data' for better clarity
+    pieData?: { name: string; amount: number; color: string; legendFontColor: string; legendFontSize: number; }[];
+    lineData?: { labels: string[]; datasets: { data: number[] }[] };
+    totalSum: number;
+  };
   selectOptions: string;
+  chartType: 'pie' | 'line';
+  setChartType: (type: 'pie' | 'line') => void;
 }
 
 const LegendItem = ({ label, color }: { label: string, color: string }) => (
@@ -16,23 +23,38 @@ const LegendItem = ({ label, color }: { label: string, color: string }) => (
   </View>
 );
 
-const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, selectOptions }) => {
-  console.log('-/  /-',data.pie)
+const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, selectOptions, chartType, setChartType }) => {
   const renderLegend = () => {
-    // Sort pieData by amount in descending order
-    const sortedPieData = [...data.pieData].sort((a, b) => b.amount - a.amount);
+    // Ensure data.pieData exists and is an array before sorting
+    const sortedPieData = data.pieData ? [...data.pieData].sort((a, b) => b.amount - a.amount) : [];
 
     return (
       <ScrollView horizontal style={styles.legendContainer}>
         {sortedPieData.map((item: any, index: number) => (
-            <LegendItem 
-            key={index} 
+          <LegendItem
+            key={index}
             color={item.color}
-            label={`${item.name}: ₹${item.amount.toFixed(0)} (${((item.amount / data.totalSum) * 100).toFixed(2)}%)`} 
-            />        
-          ))}
+            label={`${item.name}: ₹${item.amount.toFixed(0)} (${((item.amount / data.totalSum) * 100).toFixed(2)}%)`}
+          />
+        ))}
       </ScrollView>
     );
+  };
+
+  const chartConfig = {
+    backgroundColor: '#171223',
+    backgroundGradientFrom: '#171223',
+    backgroundGradientTo: '#171223',
+    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: '#ffa726',
+    },
   };
 
   return (
@@ -43,28 +65,69 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
         <>
           {isPieData ? (
             <>
-              <Text style={styles.chartTitle}>Category wise expense</Text>
-              <PieChart
-                data={data.pieData}
-                width={Dimensions.get('window').width-32} // Adjust width here
-                height={250} // Adjust height here
-                chartConfig={{
-                  backgroundColor: '#171223',
-                  backgroundGradientFrom: '#171223',
-                  backgroundGradientTo: '#171223',
-                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              }}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute
-              />
-              <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(0)}</Text>
-              {renderLegend()}
+              <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                  style={[styles.toggleButton, chartType === 'pie' && styles.activeButton]}
+                  onPress={() => setChartType('pie')}
+                >
+                  <Text style={styles.toggleButtonText}>Category Breakdown</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleButton, chartType === 'line' && styles.activeButton]}
+                  onPress={() => setChartType('line')}
+                >
+                  <Text style={styles.toggleButtonText}>Spending Dynamics</Text>
+                </TouchableOpacity>
+              </View>
+
+              {chartType === 'pie' ? (
+                <>
+                  <Text style={styles.chartTitle}>Category wise expense</Text>
+                  {data.pieData && data.pieData.length > 0 ? (
+                    <PieChart
+                      data={data.pieData}
+                      width={Dimensions.get('window').width - 32}
+                      height={250}
+                      chartConfig={chartConfig}
+                      accessor="amount"
+                      backgroundColor="transparent"
+                      paddingLeft="15"
+                      absolute
+                    />
+                  ) : (
+                    <View style={styles.noDataContainer}>
+                      <Text style={styles.noDataText}>No pie chart data available.</Text>
+                    </View>
+                  )}
+                  <Text style={styles.totalExpense}>Total Expense: ₹{data.totalSum.toFixed(0)}</Text>
+                  {renderLegend()}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.chartTitle}>Spending Dynamics Over Time</Text>
+                  {data.lineData && data.lineData.labels.length > 0 && data.lineData.datasets[0].data.length > 0 ? (
+                    <LineChart
+                      data={data.lineData}
+                      width={Dimensions.get('window').width - 32}
+                      height={250}
+                      chartConfig={chartConfig}
+                      bezier
+                      // Add this to increase horizontal space for labels if needed
+                      // style={{ marginLeft: -20, marginRight: -20 }}
+                    />
+                  ) : (
+                    <View style={styles.noDataContainer}>
+                      <Text style={styles.noDataText}>No line chart data available.</Text>
+                    </View>
+                  )}
+                </>
+              )}
             </>
           ) : (
-            <Text style={styles.noDataText}>No Data on this {selectOptions}</Text>
+            <View style={styles.noDataContainer}>
+              <Text style={styles.noDataText}>No expenses logged for this {selectOptions}.</Text>
+              <Text style={styles.noDataSubText}>Try selecting a different date or add a new expense!</Text>
+            </View>
           )}
         </>
       )}
@@ -80,26 +143,60 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#2c2c44',
+    borderRadius: 10,
+  },
+  toggleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+  },
+  activeButton: {
+    backgroundColor: '#5A4E8E',
+  },
+  toggleButtonText: {
+    color: 'white',
+    fontFamily: 'InterSemiBold',
+    fontSize: 14,
+  },
   chartTitle: {
     color: 'white',
     fontSize: 18,
     marginBottom: 10,
-    fontFamily:'cool',
+    fontFamily: 'InterBold',
   },
   totalExpense: {
     color: 'white',
     fontSize: 18,
     marginTop: 10,
-    fontFamily:'cool',
+    fontFamily: 'cool',
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#2c2c44',
+    borderRadius: 15,
   },
   noDataText: {
     color: 'white',
     fontSize: 18,
-    fontFamily:'cool',
+    fontFamily: 'InterSemiBold',
+    textAlign: 'center',
+  },
+  noDataSubText: {
+    color: '#a9a9a9',
+    fontSize: 14,
+    fontFamily: 'InterSemiBold',
+    marginTop: 10,
+    textAlign: 'center',
   },
   legendContainer: {
     marginTop: 20,
-    maxHeight: 100, 
+    maxHeight: 100,
   },
   legendItem: {
     flexDirection: 'row',
@@ -118,10 +215,10 @@ const styles = StyleSheet.create({
   legendText: {
     color: 'white',
     fontSize: 15,
-    fontFamily: 'cool',
+    fontFamily: 'InterSemiBold',
   },
-  chartText:{
-    borderRadius:5,
-    width:'100%'
+  chartText: {
+    borderRadius: 5,
+    width: '100%',
   },
 });

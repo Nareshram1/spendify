@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity,Pressable,Li
 import React, { useState,useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { supabase } from '../utils/supabaseClient';
+import { loginUser } from '../utils/auth';
 import { save, getValueFor } from '../utils/secureStore';
 import { StatusBar } from 'expo-status-bar';
 const Login = () => {
@@ -30,15 +30,11 @@ const Login = () => {
     //   user_id:string
     // }
     const handleLogin = async () => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-      if (error) {
+      try {
+        await loginUser(email, password);
+        router.replace('/user');
+      } catch (error: any) {
         alert(error.message);
-      } else {
-        const {user} = data;
-        await save('user_email', user.email ?? '');
-        await save('user_id', user.id);
-        router.replace('/user'); // Replace 'Home' with your home screen component
       }
     };
     const handleForgotPassword = async () => {

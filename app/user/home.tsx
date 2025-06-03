@@ -2,7 +2,13 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal, BackHandler, Alert, ActivityIndicator } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
-import { supabase } from '../../utils/supabaseClient'; 
+import {
+  fetchCategories,
+  addCategory,
+  addExpense,
+  deleteExpensesByCategory,
+  deleteCategory,
+} from '../../utils/database';
 import { deleteValueFor } from '../../utils/secureStore'; 
 import { router } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -77,26 +83,44 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
   }, [isBottomSheetOpen, openModal, isModalVisible, profileModalVisible]);
 
   async function SuccessPlaySound() {
-    try {
-      const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/success.mp3'));
+    // Same pattern: create + auto‐play
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/audio/success.mp3'),
+      { shouldPlay: true }
+    );
+    //@ts-ignore
+    setSound(sound);
+
+    sound.setOnPlaybackStatusUpdate((status) => {
       //@ts-ignore
-      setSound(sound);
-      await sound.playAsync();
-    } catch (error) {
-      console.log('Error playing success sound:', error);
-    }
+      if (status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
   }
 
-  async function ErrorPlaySound() {
-    try {
-      const { sound } = await Audio.Sound.createAsync(require('../../assets/audio/error.mp3'));
+async function ErrorPlaySound() {
+  try {
+    // 1) Create the Sound and start playing immediately
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/audio/error.mp3'),
+      { shouldPlay: true }
+    );
+    //@ts-ignore
+    setSound(sound);
+
+    // 2) Unload as soon as playback finishes
+    sound.setOnPlaybackStatusUpdate((status) => {
       //@ts-ignore
-      setSound(sound);
-      await sound.playAsync();
-    } catch (error) {
-      console.log('Error playing error sound:', error);
-    }
+      if (status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
+  } catch (error) {
+    console.log('Error playing error sound:', error);
   }
+}
+
 
   useEffect(() => {
     return sound
@@ -111,18 +135,10 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
     const getCategories = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('user_id', userID);
-        
-        if (error) {
-          Alert.alert('Error', error.message);
-        } else if (data) {
-          setCategories(data);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Failed to load categories');
+        const data = await fetchCategories(userID);
+        setCategories(data);
+      } catch (error: any) {
+        Alert.alert('Error', error.message);
       } finally {
         setIsLoading(false);
       }
@@ -186,84 +202,63 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
     }
 
     setIsAddingCategory(true);
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .insert([{ name: newCategory.trim(), user_id: userID }])
-        .select("*");
-      
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else if (data) {
-        setCategories(prevCategories => [...prevCategories, ...data]);
-        setNewCategory('');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add category');
-    } finally {
+  try {
+    const data = await addCategory(newCategory.trim(), userID);
+    setCategories(prev => [...prev, ...data]);
+    setNewCategory('');
+  } catch (error: any) {
+    Alert.alert('Error', error.message);
+  } finally {
       setIsAddingCategory(false);
     }
   };
 
   const handleAddExpense = async () => {
-    const isAmountValid = validateAmount(amount);
-    const isCategoryValid = validateCategory();
-    
-    if (!isAmountValid || !isCategoryValid) {
-      await ErrorPlaySound();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
+    const isAmountValid = validateAmount(amount);
+    const isCategoryValid = validateCategory();
 
-    setIsAddingExpense(true);
-    try {
-      const istOffset = 5.5 * 60 * 60000;
-      const currentDate = new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
-      
-      const sendData = date !== currentDate ? {
-        amount: parseFloat(amount).toFixed(2),
-        category_id: selectedCategory,
-        user_id: userID,
-        expense_date: `${date}T10:00:00.000Z`,
-        expense_method: paymentMethod,
-        created_at: `${date}T10:00:00.000Z`
-      } : {
-        amount: parseFloat(amount).toFixed(2),
-        category_id: selectedCategory,
-        user_id: userID,
-        expense_method: paymentMethod,
-        expense_date: date,
-        created_at: date
-      };
+    if (!isAmountValid || !isCategoryValid) {
+      await ErrorPlaySound();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
-      const { error } = await supabase
-        .from('expenses')
-        .insert([sendData]);
-      
-      if (error) {
-        await ErrorPlaySound();
-        Alert.alert('Error', error.message);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        await SuccessPlaySound();
-        
-        // Reset form
-        setAmount('');
-        setSelectedCategory(null);
-        setSelectedCategoryName('');
-        setAmountError('');
-        setCategoryError('');
-        
-        setRefreshAnalytics(!refreshAnalytics);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add expense');
-    } finally {
-      setIsAddingExpense(false);
-    }
+    setIsAddingExpense(true);
+    try {
+      const istOffset = 5.5 * 60 * 60000;
+      const currentDate = new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
+
+      const isCustomDate = date !== currentDate;
+
+      const sendData = {
+        amount: parseFloat(amount).toFixed(2),
+        category_id: selectedCategory,
+        user_id: userID,
+        expense_method: paymentMethod,
+        expense_date: isCustomDate ? `${date}T10:00:00.000Z` : date,
+        created_at: isCustomDate ? `${date}T10:00:00.000Z` : date,
+      };
+
+      await addExpense(sendData);
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      await SuccessPlaySound();
+
+      setAmount('');
+      setSelectedCategory(null);
+      setSelectedCategoryName('');
+      setAmountError('');
+      setCategoryError('');
+      setRefreshAnalytics(!refreshAnalytics);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+      await ErrorPlaySound();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsAddingExpense(false);
+    }
   };
+
 
   const handleOpen = () => {
     bottomSheetRef.current?.expand();
@@ -276,52 +271,37 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
   };
 
   const handleDeleteCategory = async () => {
-    if (categoryToDelete) {
-      Alert.alert(
-        'Delete Category',
-        `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                // Delete related expenses first
-                const { error: deleteExpensesError } = await supabase
-                  .from('expenses')
-                  .delete()
-                  .eq('category_id', categoryToDelete.id);
+    if (categoryToDelete) {
+      Alert.alert(
+        'Delete Category',
+        `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteExpensesByCategory(categoryToDelete.id);
+                await deleteCategory(categoryToDelete.id);
 
-                if (deleteExpensesError) {
-                  Alert.alert('Error', deleteExpensesError.message);
-                  return;
-                }
-
-                // Delete category
-                const { error } = await supabase
-                  .from('categories')
-                  .delete()
-                  .eq('id', categoryToDelete.id);
-
-                if (error) {
-                  Alert.alert('Error', error.message);
-                } else {
-                  setCategories(categories.filter(category => category.id !== categoryToDelete.id));
-                  setCategoryToDelete(null);
-                  setIsModalVisible(false);
-                  Alert.alert('Success', 'Category deleted successfully');
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                }
-              } catch (error) {
-                Alert.alert('Error', 'Failed to delete category');
-              }
-            }
-          }
-        ]
-      );
-    }
+                setCategories(prev =>
+                  prev.filter(category => category.id !== categoryToDelete.id)
+                );
+                setCategoryToDelete(null);
+                setIsModalVisible(false);
+                Alert.alert('Success', 'Category deleted successfully');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch (error: any) {
+                Alert.alert('Error', error.message);
+              }
+            },
+          },
+        ]
+      );
+    }
   };
+
 
   const renderCategoryItem = ({ item }: { item: Category }) => (
     <TouchableOpacity

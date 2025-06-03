@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet,Text } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, RefreshControl } from 'react-native';
 import { supabase } from '@/utils/supabaseClient';
 import TopBar from '../components/TopBar';
 import DatePickerModal from '../components/DatePickerModal';
@@ -16,15 +16,17 @@ interface GroupedData {
     [category: string]: number;
   };
 }
+
 const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
   const [selectOptions, setSelectOptions] = useState<string>('day');
-  const [data, setData] = useState<any>({});
+  const [chartType, setChartType] = useState<'pie' | 'line'>('pie');
+  const [data, setData] = useState<any>({}); // Consider a more specific type for 'data'
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false); // Add refreshing state
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const istOffset = 5.5 * 60 * 60000; // IST offset from UTC
-    return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0].replaceAll('-','/');
-});
-  // console.log(selectedDate.replaceAll('-','/'))
+    return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0].replaceAll('-', '/');
+  });
   const [openModal, setOpenModal] = useState(false);
   const [isPieData, setIsPieData] = useState(false);
 
@@ -36,13 +38,18 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
     }
   }, [userID, selectOptions, selectedDate]);
 
-  const fetchData = async (period: string, date: string) => {
+  const fetchData = async (period: string, date: string, isRefresh = false) => {
     if (!userID) {
       console.warn('userID is empty or invalid.');
       return;
     }
 
-    setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -67,17 +74,70 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
     } catch (error) {
       console.error('Error fetching expenses:', error);
     } finally {
-      setLoading(false);
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
+  };
+
+  // Pull-to-refresh handler
+  const onRefresh = React.useCallback(() => {
+    fetchData(selectOptions, selectedDate, true);
+  }, [selectOptions, selectedDate, userID]);
+
+  /**
+   * Helper function to format and filter labels for the line chart's X-axis.
+   * This helps prevent label overlapping by skipping some labels.
+   * @param labels The original array of date labels.
+   * @param period The selected period ('day', 'week', 'month', 'year').
+   * @returns An array of formatted labels, with empty strings for skipped labels.
+   */
+  const getFilteredAndFormattedLabels = (labels: string[], period: string): string[] => {
+    if (labels.length === 0) return [];
+
+    let interval = 1; // Default to showing all labels
+
+    // Adjust interval based on the number of labels or period
+    if (period === 'day' && labels.length > 7) { // If showing more than a week of daily data
+      interval = Math.ceil(labels.length / 5); // Show approx 5 labels
+    } else if (period === 'month' && labels.length > 12) { // If showing more than a year of monthly data
+        interval = Math.ceil(labels.length / 6); // Show approx 6 labels
+    } else if (period === 'year' && labels.length > 5) { // If showing more than 5 years
+        interval = Math.ceil(labels.length / 4); // Show approx 4 labels
+    }
+
+    return labels.map((label, index) => {
+      if (index % interval === 0) {
+        // Format label based on period for better readability
+        const date = new Date(label);
+        switch (period) {
+          case 'day':
+            return `${date.getDate()}/${date.getMonth() + 1}`; // e.g., 3/6 for June 3rd
+          case 'week':
+            // For weekly aggregation, labels might already be start-of-week dates
+            // You might want to display the week number or just the start date
+            return `${date.getDate()}/${date.getMonth() + 1}`;
+          case 'month':
+            return `${date.toLocaleString('en-US', { month: 'short' })} ${date.getFullYear().toString().slice(2)}`; // e.g., Jun 24
+          case 'year':
+            return date.getFullYear().toString(); // e.g., 2024
+          default:
+            return label; // Fallback to original label
+        }
+      }
+      return ""; // Return empty string to skip this label
+    });
   };
 
   const formatData = (expenses: any[], period: string, selectedDate: string) => {
     const groupedData: GroupedData = {};
-  
+
     expenses.forEach((expense) => {
       const expenseDate = new Date(expense.created_at);
       let key: string;
-  
+
       switch (period) {
         case 'day':
           key = expenseDate.toISOString().split('T')[0];
@@ -88,7 +148,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
           key = startOfWeek.toISOString().split('T')[0];
           break;
         case 'month':
-          key = `${expenseDate.getFullYear()}-${(expenseDate.getMonth() + 1).toString().padStart(2,'0')}`;
+          key = `${expenseDate.getFullYear()}-${(expenseDate.getMonth() + 1).toString().padStart(2, '0')}`;
           break;
         case 'year':
           key = `${expenseDate.getFullYear()}`;
@@ -96,51 +156,61 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
         default:
           key = expenseDate.toISOString().split('T')[0];
       }
-  
+
       const category = expense.category.name;
-  
+
       if (!groupedData[key]) {
         groupedData[key] = {};
       }
-  
+
       if (!groupedData[key][category]) {
         groupedData[key][category] = 0;
       }
-  
+
       groupedData[key][category] += parseFloat(expense.amount);
     });
-  
-    const labels: string[] = Object.keys(groupedData);
-    let lineData: { labels: string[]; datasets: { data: number[] }[] } = {
-      labels,
-      datasets: [{ data: [] }],
+
+    const allKeys = Object.keys(groupedData).sort(); // Sort keys to ensure correct chronological order
+
+    // Calculate total expenses per key for the line chart dataset
+    const lineChartDataValues = allKeys.map((key) =>
+      Object.values(groupedData[key]).reduce((a, b) => a + b, 0)
+    );
+
+    // Apply filtering and formatting to labels
+    const processedLineLabels = getFilteredAndFormattedLabels(allKeys, period);
+
+    const lineData: { labels: string[]; datasets: { data: number[] }[] } = {
+      labels: processedLineLabels,
+      datasets: [{ data: lineChartDataValues }],
     };
-  
+
     const formattedSelectedDate = (() => {
       if (period === 'day' || period === 'week') {
         return selectedDate.replace(/\//g, '-');
       } else if (period === 'month') {
-        console.log('--',selectedDate.split('/')[1])
-        // const date = new Date(selectedDate);
         return `${selectedDate.split('/')[0]}-${selectedDate.split('/')[1]}`;
       } else if (period === 'year') {
-        return selectedDate.split('/')[0]; // Assuming selectedDate is in format YYYY/MM/DD
+        return selectedDate.split('/')[0];
       }
       return selectedDate; // Fallback
     })();
-    const selectedData = groupedData[formattedSelectedDate] || {};
-  
+
+    let pieData: { name: string; amount: number; color: string; legendFontColor: string; legendFontSize: number; }[] = [];
+    let totalSumForPie = 0;
+
     if (period === 'week') {
       const weekStart = new Date(formattedSelectedDate);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Adjust to Sunday (or start of week)
       const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-  
+      weekEnd.setDate(weekStart.getDate() + 6); // End of week
+
       const aggregatedData: { [category: string]: number } = {};
-      Object.keys(groupedData).forEach((date) => {
-        const currentDate = new Date(date);
+      Object.keys(groupedData).forEach((dateKey) => {
+        const currentDate = new Date(dateKey);
+        // Compare dates without time part for accurate week range check
         if (currentDate >= weekStart && currentDate <= weekEnd) {
-          Object.entries(groupedData[date]).forEach(([category, amount]) => {
+          Object.entries(groupedData[dateKey]).forEach(([category, amount]) => {
             if (!aggregatedData[category]) {
               aggregatedData[category] = 0;
             }
@@ -148,54 +218,43 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
           });
         }
       });
-  
-      const pieData = Object.keys(aggregatedData).map((category) => ({
+
+      pieData = Object.keys(aggregatedData).map((category) => ({
         name: category,
         amount: aggregatedData[category],
         color: getRandomColor(),
         legendFontColor: '#7F7F7F',
         legendFontSize: 15,
       }));
-  
-      lineData = {
-        labels,
-        datasets: [{ data: Object.values(groupedData).map((category) => Object.values(category).reduce((a, b) => a + b)) }],
-      };
-  
-      return {
-        pieData,
-        totalSum: Object.values(aggregatedData).reduce((a, b) => a + b, 0), // Calculate total sum here
-        lineData,
-      };
+      totalSumForPie = Object.values(aggregatedData).reduce((a, b) => a + b, 0);
+
+    } else {
+      const selectedData = groupedData[formattedSelectedDate] || {};
+      pieData = Object.entries(selectedData)
+        .sort(([, amountA], [, amountB]) => amountB - amountA)
+        .map(([category, amount]) => ({
+          name: category,
+          amount,
+          color: getRandomColor(),
+          legendFontColor: '#7F7F7F',
+          legendFontSize: 15,
+        }));
+      totalSumForPie = Object.values(selectedData).reduce((a, b) => a + b, 0);
     }
-  
-    const pieData = Object.entries(selectedData)
-    .sort(([, amountA], [, amountB]) => amountB - amountA) // Sort by amount descending
-    .map(([category, amount]) => ({
-      name: category,
-      amount,
-      color: getRandomColor(),
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 15,
-    }));
-  
+
     return {
       pieData,
-      totalSum: Object.values(selectedData).reduce((a, b) => a + b, 0), // Calculate total sum here
-      lineData: {
-        labels,
-        datasets: [{ data: labels.map((key) => Object.values(groupedData[key]).reduce((a, b) => a + b, 0)) }],
-      },
+      totalSum: totalSumForPie,
+      lineData, // Use the processed lineData here
     };
   };
-  
 
   const usedColors = new Set();
 
   const getRandomColor = () => {
     const colors = [
       '#FF66D4', '#FEAE65', '#E6F690', '#AADEA7', '#64C2A6', '#2D87BB',
-      '#fd7f6f', '#7eb0d5', '#b2e061', '#bd7ebe', '#ffb55a', '#ffee65', 
+      '#fd7f6f', '#7eb0d5', '#b2e061', '#bd7ebe', '#ffb55a', '#ffee65',
       '#beb9db', '#fdcce5', '#8bd3c7'
     ];
 
@@ -250,37 +309,51 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
   return (
     <View style={styles.container}>
       <TopBar selectOptions={selectOptions} setSelectOptions={setSelectOptions} />
-      <DatePickerModal 
-        openModal={openModal} 
-        setOpenModal={setOpenModal} 
-        selectedDate={selectedDate} 
-        handleDateChange={handleDateChange} 
+      <DatePickerModal
+        openModal={openModal}
+        setOpenModal={setOpenModal}
+        selectedDate={selectedDate}
+        handleDateChange={handleDateChange}
       />
       {
         selectOptions === 'custom' ?
-        <CustomDate userID={userID}/>
-        :
-        <View style={styles.container}>
-        <ChartDisplay 
-        loading={loading} 
-        isPieData={isPieData} 
-        data={data} 
-        selectOptions={selectOptions} 
-        />
-        <DateNavigation 
-        handlePrevDay={handlePrevDay} 
-        handleNextDay={handleNextDay} 
-        selectedDate={selectedDate} 
-        setOpenModal={setOpenModal} 
-        // selectOptions={selectOptions} 
-        />
-        </View>
+          <CustomDate userID={userID} />
+          :
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#FEAE65']} // Android
+                tintColor="#FEAE65" // iOS
+                title="Pull to refresh" // iOS
+                titleColor="#FEAE65" // iOS
+              />
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            <ChartDisplay
+              loading={loading}
+              isPieData={isPieData}
+              data={data}
+              selectOptions={selectOptions}
+              chartType={chartType}
+              setChartType={setChartType}
+            />
+            <DateNavigation
+              handlePrevDay={handlePrevDay}
+              handleNextDay={handleNextDay}
+              selectedDate={selectedDate}
+              setOpenModal={setOpenModal}
+            />
+          </ScrollView>
       }
-        
-
     </View>
   );
 };
+
 export default AnalyticsPage;
 
 const styles = StyleSheet.create({
@@ -288,5 +361,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#171223',
     padding: 10,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
 });
