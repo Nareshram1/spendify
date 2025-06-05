@@ -80,21 +80,18 @@ function Account(): JSX.Element {
     }).start();
   }, [fadeAnim]);
 
-  const handleChangePassword = async (): Promise<void> => {
-    const url = 'https://spendify-hub.vercel.app/reset-password';
-    const supported = await Linking.canOpenURL(url);
+const handleChangePassword = async (): Promise<void> => {
+  const url = 'https://spendify-hub.vercel.app';
 
-    if (supported) {
-      await Linking.openURL(url);
-      Alert.alert(
-        'Password Reset',
-        'You will be redirected to our website to change your password. Please follow the instructions there.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      Alert.alert('Error', `Cannot open the URL: ${url}. Please ensure you have a web browser installed.`);
-    }
-  };
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    console.error('Failed to open URL:', error);
+    Alert.alert('Error', 'Failed to open the link.');
+  }
+};
+
+
 
   const handleExportData = (): void => {
     Alert.alert(

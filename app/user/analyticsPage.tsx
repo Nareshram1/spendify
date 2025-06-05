@@ -9,6 +9,7 @@ import CustomDate from '../components/CustomDates';
 import { Ionicons } from '@expo/vector-icons';
 interface AnalyticsPageProp {
   userID: string;
+  refreshTrigger: boolean;
 }
 
 interface GroupedData {
@@ -38,7 +39,7 @@ interface AIInsight {
   };
 }
 
-const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
+const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID, refreshTrigger }) => {
   const [selectOptions, setSelectOptions] = useState<string>('day');
   const [chartType, setChartType] = useState<'pie' | 'line'>('pie');
   const [data, setData] = useState<any>({});
@@ -62,7 +63,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
     } else {
       console.log('Invalid userID:', userID);
     }
-  }, [userID, selectOptions, selectedDate]);
+  }, [userID, selectOptions, selectedDate,refreshTrigger]);
 
   const fetchData = async (period: string, date: string, isRefresh = false) => {
     if (!userID) {
@@ -585,6 +586,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: '#1E1B2E',
     borderRadius: 20,
+    paddingBottom:15,
     width: '90%',
     maxHeight: '80%',
     elevation: 10,
@@ -610,8 +612,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   closeButton: {
-    width: 30,
-    height: 30,
+    width: 29,
+    height: 29,
     borderRadius: 15,
     backgroundColor: '#FF6B6B',
     justifyContent: 'center',
@@ -628,9 +630,9 @@ const styles = StyleSheet.create({
   },
   insightsText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    lineHeight: 22,
-    fontFamily: 'monospace',
+    fontSize: 16,
+    lineHeight: 25,
+    fontFamily: 'InterSemiBold',
   },
   noDataText: {
     color: '#888',

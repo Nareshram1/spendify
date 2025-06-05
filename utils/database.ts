@@ -130,13 +130,20 @@ export interface Expense {
   created_at: string;
   expense_method: string;
   category: string;
+  category_id: string;
 }
 
 export interface FetchExpensesForDateResult {
-  expenses: Expense[];
+  expenses: AggregatedExpense[];
   total: number;
 }
 
+// Define a new type for aggregated expenses
+export interface AggregatedExpense {
+  category: string;
+  totalAmount: number;
+  individualExpenses: Expense[]; // Array to hold the original expense objects
+}
 export interface User {
   user_id: string;
   budget: number;
@@ -157,7 +164,7 @@ export class ExpenseService {
     userID: string, 
     selectedDate: string
   ): Promise<FetchExpensesForDateResult> {
-    if (!userID) {
+   if (!userID) {
       console.warn('userID not provided, cannot fetch expenses.');
       return { expenses: [], total: 0 };
     }
@@ -165,13 +172,15 @@ export class ExpenseService {
     try {
       const { data, error } = await supabase
         .from('expenses')
-        .select(`
+        .select(
+          `
           id,
           amount,
           created_at,
           expense_method,
-          category:categories ( name )
-        `)
+          category:categories (id, name) // Fetch category ID and name
+        `
+        )
         .eq('user_id', userID)
         .gte('created_at', `${selectedDate}T00:00:00.000Z`)
         .lt('created_at', `${selectedDate}T23:59:59.999Z`);
@@ -182,24 +191,37 @@ export class ExpenseService {
       }
 
       // Aggregate expenses by category
-      const aggregatedExpenses = data.reduce((acc: any, item: any) => {
-        const existingCategory = acc.find((exp: any) => exp.category === item.category?.name);
-        if (existingCategory) {
-          existingCategory.amount += item.amount;
+      const aggregatedExpensesMap = data.reduce((acc: Map<string, AggregatedExpense>, item: any) => {
+        const categoryName = item.category?.name || 'Unknown';
+        const categoryId = item.category?.id || '';
+
+        const individualExpense: Expense = {
+          id: item.id,
+          amount: item.amount,
+          created_at: item.created_at,
+          expense_method: item.expense_method,
+          category: categoryName,
+          category_id: categoryId, // Store the actual category ID
+        };
+
+        if (acc.has(categoryName)) {
+          const existingAgg = acc.get(categoryName)!;
+          existingAgg.totalAmount += item.amount;
+          existingAgg.individualExpenses.push(individualExpense);
         } else {
-          acc.push({
-            id: item.id,
-            amount: item.amount,
-            created_at: item.created_at,
-            expense_method: item.expense_method,
-            category: item.category?.name || 'Unknown',
+          acc.set(categoryName, {
+            category: categoryName,
+            totalAmount: item.amount,
+            individualExpenses: [individualExpense],
           });
         }
         return acc;
-      }, []);
+      }, new Map<string, AggregatedExpense>());
+
+      const aggregatedExpenses: AggregatedExpense[] = Array.from(aggregatedExpensesMap.values());
 
       const total = aggregatedExpenses.reduce(
-        (sum: number, expense: Expense) => sum + expense.amount, 
+        (sum: number, expense: AggregatedExpense) => sum + expense.totalAmount,
         0
       );
 

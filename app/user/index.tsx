@@ -23,7 +23,9 @@ const MainPage = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [refresh, setRefresh] = useState(true);
   const [categories, setCategories] = useState([]);
-  
+  const [currentPage, setCurrentPage] = useState(0);
+  const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(false);
+
 async function BootPlaySound() {
   // 1) Create the Sound object (but don’t start “stop” immediately).
   const { sound } = await Audio.Sound.createAsync(
@@ -127,22 +129,44 @@ async function BootPlaySound() {
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       {isOffline ? (
-        <PagerView style={styles.container} initialPage={0}> 
-          <OfflineUIShow
-            categories={categories}
-          />
-          <OfflineUI 
-            categories={categories}
-            userID={userID}
-          />
-        </PagerView>
+      <PagerView
+        style={styles.container}
+        initialPage={1}
+        scrollEnabled={scroll}
+        onPageSelected={(e: { nativeEvent: { position: number } }) => {
+          const position = e.nativeEvent.position;
+          setCurrentPage(position);
+
+          // If AnalyticsPage becomes visible (index 2), toggle refresh trigger
+          if (position === 2) {
+            setAnalyticsRefreshTrigger(prev => !prev);
+          }
+        }}
+      >
+        <LendingsAndBorrowingsPage userID={userID} />
+        <User userID={userID} toggleScroll={toggleScroll} />
+        <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
+      </PagerView>
+
       ) : (
         refresh &&
-        <PagerView style={styles.container} initialPage={1} scrollEnabled={scroll}>
-          <LendingsAndBorrowingsPage userID={userID} />
-          <User userID={userID} toggleScroll={toggleScroll} />
-          <AnalyticsPage userID={userID} />
-        </PagerView>
+      <PagerView
+        style={styles.container}
+        initialPage={1}
+        scrollEnabled={scroll}
+        onPageSelected={(e: { nativeEvent: { position: number } }) => {
+          const position = e.nativeEvent.position;
+          setCurrentPage(position);
+
+          if (position === 2) {
+            setAnalyticsRefreshTrigger(prev => !prev); // toggle to trigger refresh
+          }
+        }}
+      >
+        <LendingsAndBorrowingsPage userID={userID} />
+        <User userID={userID} toggleScroll={toggleScroll} />
+        <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
+      </PagerView>
       )}
     </View>
   );
