@@ -6,7 +6,7 @@ import { PieChart, LineChart } from 'react-native-chart-kit';
 interface ChartDisplayProps {
   loading: boolean;
   isPieData: boolean;
-  data: { // Defined a more specific type for 'data' for better clarity
+  data: {
     pieData?: { name: string; amount: number; color: string; legendFontColor: string; legendFontSize: number; }[];
     lineData?: { labels: string[]; datasets: { data: number[] }[] };
     totalSum: number;
@@ -34,6 +34,7 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
           <LegendItem
             key={index}
             color={item.color}
+            // Keep the full detailed label for the legend
             label={`${item.name}: ₹${item.amount.toFixed(0)} (${((item.amount / data.totalSum) * 100).toFixed(2)}%)`}
           />
         ))}
@@ -85,14 +86,27 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
                   <Text style={styles.chartTitle}>Category wise expense</Text>
                   {data.pieData && data.pieData.length > 0 ? (
                     <PieChart
-                      data={data.pieData}
+                      // **THIS IS THE KEY CHANGE:**
+                      // Map over the pieData to shorten the 'name' property
+                      // This 'name' is what gets displayed directly on the pie slices.
+                      data={data.pieData.map(item => ({
+                        ...item,
+                        // Option 1: Just the category name (most concise)
+                        name: item.name,
+                        // Option 2: Category name + percentage (if space allows and useful)
+                        // name: `${item.name} (${((item.amount / data.totalSum) * 100).toFixed(0)}%)`,
+                        // Option 3: Shorten long names if they still squash
+                        // name: item.name.length > 10 ? `${item.name.substring(0, 7)}...` : item.name,
+                      }))}
                       width={Dimensions.get('window').width - 32}
                       height={250}
                       chartConfig={chartConfig}
                       accessor="amount"
                       backgroundColor="transparent"
                       paddingLeft="15"
-                      absolute
+                      absolute // Keeps labels outside slices if space is an issue, but inside if possible
+                      // You can also consider setting a fixed legendFontSize in chartConfig if you want to explicitly control it
+                      // but for on-slice labels, `react-native-chart-kit` manages it based on space.
                     />
                   ) : (
                     <View style={styles.noDataContainer}>
@@ -112,8 +126,7 @@ const ChartDisplay: React.FC<ChartDisplayProps> = ({ loading, isPieData, data, s
                       height={250}
                       chartConfig={chartConfig}
                       bezier
-                      // Add this to increase horizontal space for labels if needed
-                      // style={{ marginLeft: -20, marginRight: -20 }}
+                      // style={{ marginLeft: -20, marginRight: -20 }} // Uncomment if line chart labels overlap
                     />
                   ) : (
                     <View style={styles.noDataContainer}>

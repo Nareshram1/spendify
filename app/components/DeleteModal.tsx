@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { supabase } from '@/utils/supabaseClient';
+import { getCategoriesForUser } from '@/utils/database';
 
 const { width } = Dimensions.get('window');
 type Category = {
@@ -83,34 +83,37 @@ const ExpenseActionModal = ({
     (new Date().getFullYear() - 5 + i).toString()
   );
 
-  useEffect(() => {
-    
-    const getCategories = async () => {
-      const { data , error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', userID);
+ useEffect(() => {
+  const fetchCategories = async () => {
+    try {
+      const categories = await getCategoriesForUser(userID);
 
-      if (error) {
-        alert(error.message);
-      } else if (data) {
-        setCategories(data);
-        const expenseDate = new Date(expense.created_at);
-        setFormData({
-          amount: expense.amount.toString(),
-          category_id: data.find(category => category.name == expense.category)?.id || '',
-          expense_method: expense.expense_method,
-          day: expenseDate.getUTCDate().toString(),
-          month: (expenseDate.getUTCMonth() + 1).toString(),
-          year: expenseDate.getUTCFullYear().toString()
-        });
-      }
-    };
+      setCategories(categories);
 
-    if (userID) {
-      getCategories();
+      if (!expense) return;
+
+      const expenseDate = new Date(expense.created_at);
+
+      setFormData({
+        amount: expense.amount.toString(),
+        category_id: categories.find(category => category.name === expense.category)?.id || '',
+        expense_method: expense.expense_method,
+        day: expenseDate.getUTCDate().toString(),
+        month: (expenseDate.getUTCMonth() + 1).toString(),
+        year: expenseDate.getUTCFullYear().toString()
+      });
+
+    } catch (error) {
+      alert((error as Error).message);
+      console.error('Error in fetchCategories:', error);
     }
-  }, [userID,expense]);
+  };
+
+  if (userID && expense) {
+    fetchCategories();
+  }
+}, [userID, expense]);
+
   const handleUpdate = async () => {
     try {
       const newDate = new Date(

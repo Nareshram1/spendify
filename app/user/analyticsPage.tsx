@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, RefreshControl } from 'react-native';
-import { supabase } from '@/utils/supabaseClient';
+import { fetchUserExpenses } from '@/utils/database';
 import TopBar from '../components/TopBar';
 import DatePickerModal from '../components/DatePickerModal';
 import ChartDisplay from '../components/ChartDisplay';
@@ -38,49 +38,30 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID }) => {
     }
   }, [userID, selectOptions, selectedDate]);
 
-  const fetchData = async (period: string, date: string, isRefresh = false) => {
-    if (!userID) {
-      console.warn('userID is empty or invalid.');
-      return;
-    }
+const fetchData = async (period: string, date: string, isRefresh = false) => {
+  if (!userID) {
+    console.warn('userID is empty or invalid.');
+    return;
+  }
 
-    if (isRefresh) {
-      setRefreshing(true);
+  isRefresh ? setRefreshing(true) : setLoading(true);
+
+  try {
+    const data = await fetchUserExpenses(userID);
+
+    if (data) {
+      const formattedData = formatData(data, period, date);
+      setData(formattedData);
+      setIsPieData(formattedData.pieData.length > 0);
     } else {
-      setLoading(true);
+      console.warn('No data returned from the query.');
     }
-
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          amount,
-          created_at,
-          category:categories ( name )
-        `)
-        .eq('user_id', userID);
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        const formattedData = formatData(data, period, date);
-        setData(formattedData);
-        setIsPieData(formattedData.pieData.length > 0);
-      } else {
-        console.warn('No data returned from the query.');
-      }
-    } catch (error) {
-      console.error('Error fetching expenses:', error);
-    } finally {
-      if (isRefresh) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  };
+  } catch (error) {
+    console.error('Error fetching expenses:', error);
+  } finally {
+    isRefresh ? setRefreshing(false) : setLoading(false);
+  }
+};
 
   // Pull-to-refresh handler
   const onRefresh = React.useCallback(() => {

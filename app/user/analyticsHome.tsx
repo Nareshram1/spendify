@@ -196,18 +196,20 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
                             mainColor: '#6A11CB',
                         }}
                     />
-                    <Pressable
-                        onPress={confirmDateSelection} // This button confirms and closes
-                        style={styles.modalCloseButton}
-                    >
-                        <Text style={styles.modalCloseButtonText}>Confirm</Text>
-                    </Pressable>
-                    <Pressable
-                        onPress={() => setIsDatePickerModalVisible(false)} // This button cancels
-                        style={styles.modalCloseButton}
-                    >
-                        <Text style={styles.modalCloseButtonText}>Cancel</Text>
-                    </Pressable>
+                    <View style={styles.modalButtonContainer}>
+                      <Pressable
+                          onPress={confirmDateSelection} // This button confirms and closes
+                          style={styles.modalCloseButton}
+                      >
+                          <Text style={styles.modalCloseButtonText}>Confirm</Text>
+                      </Pressable>
+                      <Pressable
+                          onPress={() => setIsDatePickerModalVisible(false)} // This button cancels
+                          style={styles.modalCloseButton}
+                      >
+                          <Text style={styles.modalCloseButtonText}>Cancel</Text>
+                      </Pressable>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -334,17 +336,26 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,
         elevation: 5,
     },
+    modalButtonContainer: {
+    flexDirection: 'row', // This makes the children (buttons) lay out horizontally
+    justifyContent: 'space-around', // Distributes space evenly around items
+    marginTop: 20, // Add some space above the buttons
+  },
     modalCloseButton: {
         backgroundColor: '#0ac7b8',
         padding: 12,
         borderRadius: 25,
         marginTop: 10,
         alignSelf: 'center',
+        flex: 1,
+        marginHorizontal: 5, 
+        alignItems: 'center',
     },
     modalCloseButtonText: {
-        color: 'white',
-        textAlign: 'center',
-        fontWeight: 'bold',
+        color: 'white',
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontFamily:'InterRegular'
     },
     deleteModal: {
         width: width * 0.85,

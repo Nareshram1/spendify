@@ -1,19 +1,6 @@
 import { supabase } from './supabaseClient';
 import { getValueFor, saveCategory, deleteValueFor } from './secureStore';
-/**
- * Fetches categories for a given user ID.
- * @param userID - The ID of the user whose categories should be fetched.
- * @returns An array of categories or throws an error.
- */
-export async function fetchCategories(userID: string) {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('user_id', userID);
 
-  if (error) throw new Error(error.message);
-  return data;
-}
 
 /**
  * Adds a new category for the user.
@@ -647,3 +634,179 @@ export const deleteTransaction = async (
 
   if (error) throw error;
 };
+
+/**
+ * Fetches expenses for a specific user.
+ *
+ * @param userID - The ID of the user whose expenses are to be fetched.
+ * @returns A Promise resolving to the fetched data or throwing an error.
+ */
+export async function fetchUserExpenses(userID: string) {
+  if (!userID) {
+    throw new Error('Invalid or missing userID.');
+  }
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(`
+      amount,
+      created_at,
+      category:categories ( name )
+    `)
+    .eq('user_id', userID);
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Fetches expenses for a user within a given date range.
+ *
+ * @param userID - The ID of the user
+ * @param startDate - Start date string (YYYY-MM-DD)
+ * @param endDate - End date string (YYYY-MM-DD)
+ * @returns Promise resolving to array of expenses or throws an error
+ */
+export async function fetchExpensesBetweenDates(userID: string, startDate: string, endDate: string) {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('amount, category:categories ( name )')
+    .eq('user_id', userID)
+    .gte('expense_date', startDate)
+    .lte('expense_date', endDate);
+
+  if (error) {
+    console.error('Supabase fetch error:', error.message);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Fetches all categories for a given user.
+ *
+ * @param userID - The ID of the user
+ * @returns Promise resolving to array of category objects
+ */
+export async function getCategoriesForUser(userID: string) {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('user_id', userID);
+
+  if (error) {
+    console.error('Supabase getCategoriesForUser error:', error.message);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch user info from the 'users' table based on user ID.
+ * @param userId - The user's unique identifier.
+ * @returns User data or error.
+ */
+export async function fetchUserInfoById(userId: string) {
+  return await supabase
+    .from('users')
+    .select('name, email, created_at')
+    .eq('user_id', userId)
+    .single();
+}
+
+/**
+ * Logs out the current user from Supabase.
+ * @returns Error if any during sign-out.
+ */
+export async function logoutUser() {
+  return await supabase.auth.signOut();
+}
+
+/**
+ * Delete all expense records for a specific user.
+ * @param userId - The user's unique identifier.
+ * @returns Error if any during deletion.
+ */
+export async function deleteUserExpenses(userId: string) {
+  return await supabase
+    .from('expenses')
+    .delete()
+    .eq('user_id', userId);
+}
+
+/**
+ * Delete a user from the 'users' table.
+ * @param userId - The user's unique identifier.
+ * @returns Error if any during deletion.
+ */
+export async function deleteUserAccount(userId: string) {
+  return await supabase
+    .from('users')
+    .delete()
+    .eq('user_id', userId);
+}
+
+export async function exportUserExpenses(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('description, amount, expense_date, expense_method, categories(name)') // Select desired columns and join with categories
+      .eq('user_id', userId)
+      .csv(); // Request data as CSV
+
+    if (error) {
+      console.error('Error exporting expenses:', error.message);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (err) {
+    console.error('Unexpected error during expenses export:', err);
+    return { data: null, error: new Error('An unexpected error occurred during expenses export.') };
+  }
+}
+
+export async function exportUserBorrowings(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('borrowings')
+      .select('person_name, amount, date, description')
+      .eq('user_id', userId)
+      .csv();
+
+    if (error) {
+      console.error('Error exporting borrowings:', error.message);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (err) {
+    console.error('Unexpected error during borrowings export:', err);
+    return { data: null, error: new Error('An unexpected error occurred during borrowings export.') };
+  }
+}
+
+export async function exportUserLendings(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('lendings')
+      .select('person_name, amount, date, description')
+      .eq('user_id', userId)
+      .csv();
+
+    if (error) {
+      console.error('Error exporting lendings:', error.message);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (err) {
+    console.error('Unexpected error during lendings export:', err);
+    return { data: null, error: new Error('An unexpected error occurred during lendings export.') };
+  }
+}

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressabl
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import {
-  fetchCategories,
+  getCategoriesForUser,
   addCategory,
   addExpense,
   deleteExpensesByCategory,
@@ -135,7 +135,7 @@ async function ErrorPlaySound() {
     const getCategories = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchCategories(userID);
+        const data = await getCategoriesForUser(userID);
         setCategories(data);
       } catch (error: any) {
         Alert.alert('Error', error.message);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, Pressable, Dimensions, ActivityIndicator } from 'react-native';
 import DatePickerModal from './DatePickerModal';
-import { supabase } from '@/utils/supabaseClient';
+import { fetchExpensesBetweenDates } from '@/utils/database';
 import { PieChart } from 'react-native-chart-kit';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -52,60 +52,55 @@ const CustomDate = ({ userID }: { userID: string }) => {
     };
 
     const handleCustomDate = async () => {
-        const startDate = new Date(selectedDateSt);
-        const endDate = new Date(selectedDateEnd);
-        
-        if (endDate <= startDate) {
-            alert('End date must be after start date');
-            return;
+    const startDate = new Date(selectedDateSt);
+    const endDate = new Date(selectedDateEnd);
+
+    if (endDate <= startDate) {
+        alert('End date must be after start date');
+        return;
+    }
+
+    setIsLoading(true);
+    try {
+        const expenseData = await fetchExpensesBetweenDates(userID, selectedDateSt, selectedDateEnd);
+
+        if (!expenseData || expenseData.length === 0) {
+        alert('No expenses found for the selected date range');
+        setShowPie(false);
+        return;
         }
 
-        setIsLoading(true);
-        try {
-            const { data: expenseData, error } = await supabase
-                .from('expenses')
-                .select('amount, category:categories ( name )')
-                .eq('user_id', userID)
-                .gte('expense_date', selectedDateSt)
-                .lte('expense_date', selectedDateEnd);
+        let sum = 0;
+        const categorizedExpensesPieData = expenseData.reduce((acc, expense) => {
+        //@ts-ignore
+        const categoryName = expense.category.name.trim();
+        const existingCategory = acc.find(item => item.name === categoryName);
 
-            if (error) throw error;
-            if (!expenseData || expenseData.length === 0) {
-                alert('No expenses found for the selected date range');
-                setShowPie(false);
-                return;
-            }
-
-            let sum = 0;
-            const categorizedExpensesPieData = expenseData.reduce((acc, expense) => {
-                //@ts-ignore
-                const categoryName = expense.category.name.trim();
-                const existingCategory = acc.find(item => item.name === categoryName);
-
-                if (existingCategory) {
-                    existingCategory.amount += expense.amount;
-                } else {
-                    acc.push({
-                        name: categoryName,
-                        amount: expense.amount,
-                        color: getRandomColor(),
-                        legendFontColor: '#FFFFFF',
-                        legendFontSize: 12,
-                    });
-                }
-                sum += expense.amount;
-                return acc;
-            }, [] as any[]);
-            categorizedExpensesPieData.sort((a, b) => b.amount - a.amount);
-            setTotal(sum);
-            setData(categorizedExpensesPieData);
-            setShowPie(true);
-        } catch (error) {
-            alert('Error fetching expense data');
-            console.error(error);
-        } finally {
-            setIsLoading(false);
+        if (existingCategory) {
+            existingCategory.amount += expense.amount;
+        } else {
+            acc.push({
+            name: categoryName,
+            amount: expense.amount,
+            color: getRandomColor(),
+            legendFontColor: '#FFFFFF',
+            legendFontSize: 12,
+            });
         }
+        sum += expense.amount;
+        return acc;
+        }, [] as any[]);
+
+        categorizedExpensesPieData.sort((a, b) => b.amount - a.amount);
+        setTotal(sum);
+        setData(categorizedExpensesPieData);
+        setShowPie(true);
+    } catch (error) {
+        alert('Error fetching expense data');
+        console.error(error);
+    } finally {
+        setIsLoading(false);
+    }
     };
 
     return (

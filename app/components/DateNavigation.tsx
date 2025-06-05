@@ -33,12 +33,13 @@ const DateNavigation: React.FC<DateNavigationProps> = ({
   };
 
   return (
-    <View style={styles.bottomPickerContainer}>
+    <View style={styles.container}>
+      {/* Previous Day Button */}
       <Pressable
         onPress={handlePrevDay}
         onPressIn={handlePressIn}
         style={({ pressed }) => [
-          styles.iconButton,
+          styles.navigationButton,
           pressed && styles.buttonPressed,
         ]}
         accessibilityLabel="Previous day"
@@ -47,24 +48,26 @@ const DateNavigation: React.FC<DateNavigationProps> = ({
         <Ionicons name="caret-back-outline" size={24} color={COLORS.primaryGreen} />
       </Pressable>
 
+      {/* Date Picker */}
       <Pressable
         onPress={() => setOpenModal(true)}
         onPressIn={handlePressIn}
         style={({ pressed }) => [
-          styles.datePickerContainer,
-          pressed && styles.buttonPressed, // Apply pressed style to date picker as well
+          styles.dateDisplay,
+          pressed && styles.buttonPressed,
         ]}
         accessibilityLabel="Select date"
         accessibilityRole="button"
       >
-        <Text style={styles.datePickerText}>{selectedDate}</Text>
+        <Text style={styles.dateText}>{selectedDate}</Text>
       </Pressable>
 
+      {/* Next Day Button */}
       <Pressable
         onPress={handleNextDay}
         onPressIn={handlePressIn}
         style={({ pressed }) => [
-          styles.iconButton,
+          styles.navigationButton,
           pressed && styles.buttonPressed,
         ]}
         accessibilityLabel="Next day"
@@ -76,53 +79,55 @@ const DateNavigation: React.FC<DateNavigationProps> = ({
   );
 };
 
-// Use React.memo for performance optimization if the component doesn't need to re-render often
 export default React.memo(DateNavigation);
 
 const styles = StyleSheet.create({
-  bottomPickerContainer: {
+  container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.darkBackground,
-    paddingVertical: 14, // Slightly more vertical padding
-    paddingHorizontal: 16, // Slightly more horizontal padding
-    borderRadius: 12,
+    paddingHorizontal: 20, // More padding for overall separation
+    paddingVertical: 15,
+    backgroundColor: COLORS.darkBackground, // Still keep a background for the whole strip
+    borderRadius: 15, // Slightly more rounded corners
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.white, // Lighter shadow for iOS
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowColor: COLORS.white,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
       },
       android: {
-        elevation: 6, // Android elevation for depth
+        elevation: 8,
       },
     }),
   },
-  iconButton: {
-    padding: 10,
-    borderRadius: 8,
+  navigationButton: {
+    padding: 12, // More padding for a larger touch target
+    borderRadius: 10, // Rounded buttons
     backgroundColor: COLORS.mediumGray,
-    justifyContent: 'center', // Center content
-    alignItems: 'center',    // Center content
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 50, // Fixed width for consistent button size
+    height: 50, // Fixed height for consistent button size
   },
-  buttonPressed: {
-    opacity: COLORS.pressedOpacity,
-  },
-  datePickerContainer: {
-    flex: 1, // Allow it to take up available space
-    marginHorizontal: 12, // Space between buttons and date
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+  dateDisplay: {
+    flex: 1, // Allows the date display to take up available space
+    marginHorizontal: 15, // Space between buttons and date
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     backgroundColor: COLORS.mediumGray,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  datePickerText: {
+  dateText: {
     color: COLORS.white,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20, // Slightly larger font for prominence
+    fontWeight: '700', // Bolder font
+  },
+  buttonPressed: {
+    opacity: COLORS.pressedOpacity,
+    // Consider adding a slight scale or color change for more feedback if desired
   },
 });

@@ -1,196 +1,187 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-  Modal,
-  Animated,
-  Linking
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  SafeAreaView,
+  Modal,
+  Animated,
+  Linking
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteValueFor, getValueFor } from '../../utils/secureStore';
 import { router } from 'expo-router';
-import { supabase } from '@/utils/supabaseClient';
+import {
+  fetchUserInfoById,
+  logoutUser,
+  deleteUserExpenses,
+  deleteUserAccount
+} from '@/utils/database';
 
 interface UserInfo {
-  name: string;
-  email: string;
-  memberSince: string; // Will be formatted as Month Name DD, YYYY
+  name: string;
+  email: string;
+  memberSince: string;
 }
 
 function Account(): JSX.Element {
-  const [userInfo, setUserInfo] = useState<UserInfo>({
-    name: 'Loading...',
-    email: 'Loading...',
-    memberSince: 'Loading...',
-  });
-  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    name: 'Loading...',
+    email: 'Loading...',
+    memberSince: 'Loading...',
+  });
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Month names array
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
-  // Fetch user data on component mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const storedUserId = await getValueFor('user_id');
-      if (storedUserId) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('name, email, created_at')
-          .eq('user_id', storedUserId)
-          .single();
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const storedUserId = await getValueFor('user_id');
+      if (storedUserId) {
+        const { data, error } = await fetchUserInfoById(storedUserId);
 
-        if (error) {
-          console.error('Error fetching user data:', error);
-          Alert.alert('Error', 'Failed to fetch user information.');
-        } else if (data) {
-          let formattedMemberSince = 'N/A';
-          if (data.created_at) {
-            const dateObj = new Date(data.created_at);
-            const year = dateObj.getFullYear();
-            const month = monthNames[dateObj.getMonth()]; // Get month name
-            const day = dateObj.getDate();
-            formattedMemberSince = `${month} ${day}, ${year}`; // Format as "MonthName Day, Year"
-          }
+        if (error) {
+          console.error('Error fetching user data:', error);
+          Alert.alert('Error', 'Failed to fetch user information.');
+        } else if (data) {
+          let formattedMemberSince = 'N/A';
+          if (data.created_at) {
+            const dateObj = new Date(data.created_at);
+            const year = dateObj.getFullYear();
+            const month = monthNames[dateObj.getMonth()];
+            const day = dateObj.getDate();
+            formattedMemberSince = `${month} ${day}, ${year}`;
+          }
 
-          setUserInfo({
-            name: data.name || 'N/A',
-            email: data.email || 'N/A',
-            memberSince: formattedMemberSince,
-          });
-        }
-      } else {
-        router.replace('/');
-      }
-    };
+          setUserInfo({
+            name: data.name || 'N/A',
+            email: data.email || 'N/A',
+            memberSince: formattedMemberSince,
+          });
+        }
+      } else {
+        router.replace('/');
+      }
+    };
 
-    fetchUserData();
+    fetchUserData();
 
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
-  const handleChangePassword = async (): Promise<void> => {
-    const url = 'https://spendify-hub.vercel.app/reset-password';
-    const supported = await Linking.canOpenURL(url);
+  const handleChangePassword = async (): Promise<void> => {
+    const url = 'https://spendify-hub.vercel.app/reset-password';
+    const supported = await Linking.canOpenURL(url);
 
-    if (supported) {
-      await Linking.openURL(url);
-      Alert.alert(
-        'Password Reset',
-        'You will be redirected to our website to change your password. Please follow the instructions there.',
-        [{ text: 'OK' }]
-      );
-    } else {
-      Alert.alert('Error', `Cannot open the URL: ${url}. Please ensure you have a web browser installed.`);
-    }
-  };
+    if (supported) {
+      await Linking.openURL(url);
+      Alert.alert(
+        'Password Reset',
+        'You will be redirected to our website to change your password. Please follow the instructions there.',
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('Error', `Cannot open the URL: ${url}. Please ensure you have a web browser installed.`);
+    }
+  };
 
-  const handleExportData = (): void => {
-    Alert.alert(
-      'Export Data',
-      'This feature is under development. Soon you will be able to export your expense data.'
-    );
-  };
+  const handleExportData = (): void => {
+    Alert.alert(
+      'Export Data',
+      'This feature is under development. Soon you will be able to export your expense data.'
+    );
+  };
 
-  const handleLogOut = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Logout Error', 'Could not log out at this time.');
-              return;
-            }
-            await deleteValueFor('user_id');
-            await deleteValueFor('user_email');
-            router.replace('/');
-          }
-        }
-      ]
-    );
-  };
+  const handleLogOut = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await logoutUser();
+            if (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Logout Error', 'Could not log out at this time.');
+              return;
+            }
+            await deleteValueFor('user_id');
+            await deleteValueFor('user_email');
+            router.replace('/');
+          }
+        }
+      ]
+    );
+  };
 
-  const handleDeleteAccount = (): void => {
-    setDeleteModalVisible(true);
-  };
+  const handleDeleteAccount = (): void => {
+    setDeleteModalVisible(true);
+  };
 
-  const confirmDeleteAccount = async (): Promise<void> => {
-    setDeleteModalVisible(false);
-    Alert.alert(
-      'Confirm Account Deletion',
-      'Deleting your account is a permanent action. All your data will be lost. Are you absolutely sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: async () => {
-            const storedUserId = await getValueFor('user_id');
-            if (!storedUserId) {
-              Alert.alert('Error', 'User ID not found. Cannot delete account.');
-              return;
-            }
+  const confirmDeleteAccount = async (): Promise<void> => {
+    setDeleteModalVisible(false);
+    Alert.alert(
+      'Confirm Account Deletion',
+      'Deleting your account is a permanent action. All your data will be lost. Are you absolutely sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            const storedUserId = await getValueFor('user_id');
+            if (!storedUserId) {
+              Alert.alert('Error', 'User ID not found. Cannot delete account.');
+              return;
+            }
 
-            try {
-              const { error: deleteExpensesError } = await supabase
-                .from('expenses')
-                .delete()
-                .eq('user_id', storedUserId);
+            try {
+              const { error: deleteExpensesError } = await deleteUserExpenses(storedUserId);
+              if (deleteExpensesError) {
+                console.error('Error deleting user expenses:', deleteExpensesError.message);
+                Alert.alert('Deletion Error', 'Failed to delete associated expenses. Please try again.');
+                return;
+              }
 
-              if (deleteExpensesError) {
-                console.error('Error deleting user expenses:', deleteExpensesError.message);
-                Alert.alert('Deletion Error', 'Failed to delete associated expenses. Please try again.');
-                return;
-              }
+              const { error: deleteUserTableError } = await deleteUserAccount(storedUserId);
+              if (deleteUserTableError) {
+                console.error('Error deleting user from users table:', deleteUserTableError.message);
+                Alert.alert('Deletion Error', 'Failed to delete user record. Please try again.');
+                return;
+              }
 
-              const { error: deleteUserTableError } = await supabase
-                .from('users')
-                .delete()
-                .eq('user_id', storedUserId);
+              await deleteValueFor('user_id');
+              await deleteValueFor('user_email');
+              Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
+              router.replace('/');
+            } catch (error) {
+              console.error('Unexpected error during account deletion:', error);
+              Alert.alert('Error', 'An unexpected error occurred during account deletion.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
-              if (deleteUserTableError) {
-                console.error('Error deleting user from users table:', deleteUserTableError.message);
-                Alert.alert('Deletion Error', 'Failed to delete user record. Please try again.');
-                return;
-              }
+  const cancelDeleteAccount = (): void => {
+    setDeleteModalVisible(false);
+  };
 
-              await deleteValueFor('user_id');
-              await deleteValueFor('user_email');
-              Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
-              router.replace('/');
-            } catch (error) {
-              console.error('Unexpected error during account deletion:', error);
-              Alert.alert('Error', 'An unexpected error occurred during account deletion.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const cancelDeleteAccount = (): void => {
-    setDeleteModalVisible(false);
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
