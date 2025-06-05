@@ -2,7 +2,7 @@
   "expo": {
     "name": "spendify",
     "slug": "spendify",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "orientation": "portrait",
     "icon": "./assets/images/playstore.png",
     "scheme": "myapp",
