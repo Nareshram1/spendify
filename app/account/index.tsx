@@ -1,183 +1,241 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-  Modal,
-  Animated,
-  Linking
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  SafeAreaView,
+  Modal,
+  Animated,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteValueFor, getValueFor } from '../../utils/secureStore';
 import { router } from 'expo-router';
 import {
-  fetchUserInfoById,
-  logoutUser,
-  deleteUserExpenses,
-  deleteUserAccount
+  fetchUserInfoById,
+  logoutUser,
+  deleteUserExpenses,
+  deleteUserAccount,
 } from '@/utils/database';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 interface UserInfo {
-  name: string;
-  email: string;
-  memberSince: string;
+  name: string;
+  email: string;
+  memberSince: string;
 }
 
 function Account(): JSX.Element {
-  const [userInfo, setUserInfo] = useState<UserInfo>({
-    name: 'Loading...',
-    email: 'Loading...',
-    memberSince: 'Loading...',
-  });
-  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    name: 'Loading...',
+    email: 'Loading...',
+    memberSince: 'Loading...',
+  });
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [isExportModalVisible, setExportModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const storedUserId = await getValueFor('user_id');
-      if (storedUserId) {
-        const { data, error } = await fetchUserInfoById(storedUserId);
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const storedUserId = await getValueFor('user_id');
+      if (storedUserId) {
+        const { data, error } = await fetchUserInfoById(storedUserId);
 
-        if (error) {
-          console.error('Error fetching user data:', error);
-          Alert.alert('Error', 'Failed to fetch user information.');
-        } else if (data) {
-          let formattedMemberSince = 'N/A';
-          if (data.created_at) {
-            const dateObj = new Date(data.created_at);
-            const year = dateObj.getFullYear();
-            const month = monthNames[dateObj.getMonth()];
-            const day = dateObj.getDate();
-            formattedMemberSince = `${month} ${day}, ${year}`;
-          }
+        if (error) {
+          console.error('Error fetching user data:', error);
+          Alert.alert('Error', 'Failed to fetch user information.');
+        } else if (data) {
+          let formattedMemberSince = 'N/A';
+          if (data.created_at) {
+            const dateObj = new Date(data.created_at);
+            const year = dateObj.getFullYear();
+            const month = monthNames[dateObj.getMonth()];
+            const day = dateObj.getDate();
+            formattedMemberSince = `${month} ${day}, ${year}`;
+          }
 
-          setUserInfo({
-            name: data.name || 'N/A',
-            email: data.email || 'N/A',
-            memberSince: formattedMemberSince,
-          });
-        }
-      } else {
-        router.replace('/');
-      }
-    };
+          setUserInfo({
+            name: data.name || 'N/A',
+            email: data.email || 'N/A',
+            memberSince: formattedMemberSince,
+          });
+        }
+      } else {
+        router.replace('/');
+      }
+    };
 
-    fetchUserData();
+    fetchUserData();
 
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
-const handleChangePassword = async (): Promise<void> => {
-  const url = 'https://spendify-hub.vercel.app';
+  const handleChangePassword = async (): Promise<void> => {
+    const url = 'https://spendify-hub.vercel.app';
 
-  try {
-    await Linking.openURL(url);
-  } catch (error) {
-    console.error('Failed to open URL:', error);
-    Alert.alert('Error', 'Failed to open the link.');
-  }
-};
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', `Don't know how to open this URL: ${url}`);
+      }
+    } catch (error) {
+      console.error('Failed to open URL:', error);
+      Alert.alert('Error', 'Failed to open the link.');
+    }
+  };
 
+  const handleExportData = (format: 'csv' | 'json') => {
+    setExportModalVisible(false);
+    exportData(format);
+  };
 
+  const exportData = async (format: 'csv' | 'json') => {
+    setIsLoading(true);
+    try {
+      const userId = await getValueFor('user_id');
+      if (!userId) {
+        Alert.alert('Error', 'User not found.');
+        setIsLoading(false);
+        return;
+      }
 
-  const handleExportData = (): void => {
-    Alert.alert(
-      'Export Data',
-      'This feature is under development. Soon you will be able to export your expense data.'
-    );
-  };
+      // IMPORTANT: Replace with your actual API endpoint
+      const response = await fetch('https://spendify-hub.vercel.app/api/exportData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, format }),
+      });
 
-  const handleLogOut = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await logoutUser();
-            if (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Logout Error', 'Could not log out at this time.');
-              return;
-            }
-            await deleteValueFor('user_id');
-            await deleteValueFor('user_email');
-            router.replace('/');
-          }
-        }
-      ]
-    );
-  };
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch data from the server: ${errorText}`);
+      }
 
-  const handleDeleteAccount = (): void => {
-    setDeleteModalVisible(true);
-  };
+      const data = await (format === 'json' ? response.json() : response.text());
+      const fileName = `expenses_${userInfo.name}_${new Date().getTime()}.${format}`;
+      const fileUri = FileSystem.documentDirectory + fileName;
 
-  const confirmDeleteAccount = async (): Promise<void> => {
-    setDeleteModalVisible(false);
-    Alert.alert(
-      'Confirm Account Deletion',
-      'Deleting your account is a permanent action. All your data will be lost. Are you absolutely sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: async () => {
-            const storedUserId = await getValueFor('user_id');
-            if (!storedUserId) {
-              Alert.alert('Error', 'User ID not found. Cannot delete account.');
-              return;
-            }
+      await FileSystem.writeAsStringAsync(fileUri, typeof data === 'string' ? data : JSON.stringify(data, null, 2), { encoding: FileSystem.EncodingType.UTF8 });
 
-            try {
-              const { error: deleteExpensesError } = await deleteUserExpenses(storedUserId);
-              if (deleteExpensesError) {
-                console.error('Error deleting user expenses:', deleteExpensesError.message);
-                Alert.alert('Deletion Error', 'Failed to delete associated expenses. Please try again.');
-                return;
-              }
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert('Sharing not available', 'Sharing is not available on your device.');
+      }
+    } catch (error) {
+      console.error('Export Error:', error);
+      Alert.alert('Export Error', 'Failed to export data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-              const { error: deleteUserTableError } = await deleteUserAccount(storedUserId);
-              if (deleteUserTableError) {
-                console.error('Error deleting user from users table:', deleteUserTableError.message);
-                Alert.alert('Deletion Error', 'Failed to delete user record. Please try again.');
-                return;
-              }
+  const handleLogOut = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await logoutUser();
+            if (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Logout Error', 'Could not log out at this time.');
+              return;
+            }
+            await deleteValueFor('user_id');
+            await deleteValueFor('user_email');
+            router.replace('/');
+          },
+        },
+      ]
+    );
+  };
 
-              await deleteValueFor('user_id');
-              await deleteValueFor('user_email');
-              Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
-              router.replace('/');
-            } catch (error) {
-              console.error('Unexpected error during account deletion:', error);
-              Alert.alert('Error', 'An unexpected error occurred during account deletion.');
-            }
-          }
-        }
-      ]
-    );
-  };
+  const handleDeleteAccount = (): void => {
+    setDeleteModalVisible(true);
+  };
 
-  const cancelDeleteAccount = (): void => {
-    setDeleteModalVisible(false);
-  };
+  const confirmDeleteAccount = async (): Promise<void> => {
+    setDeleteModalVisible(false);
+    Alert.alert(
+      'Confirm Account Deletion',
+      'Deleting your account is a permanent action. All your data will be lost. Are you absolutely sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            const storedUserId = await getValueFor('user_id');
+            if (!storedUserId) {
+              Alert.alert('Error', 'User ID not found. Cannot delete account.');
+              return;
+            }
+
+            try {
+              const { error: deleteExpensesError } = await deleteUserExpenses(storedUserId);
+              if (deleteExpensesError) {
+                console.error('Error deleting user expenses:', deleteExpensesError.message);
+                Alert.alert('Deletion Error', 'Failed to delete associated expenses. Please try again.');
+                return;
+              }
+
+              const { error: deleteUserTableError } = await deleteUserAccount(storedUserId);
+              if (deleteUserTableError) {
+                console.error('Error deleting user from users table:', deleteUserTableError.message);
+                Alert.alert('Deletion Error', 'Failed to delete user record. Please try again.');
+                return;
+              }
+
+              await deleteValueFor('user_id');
+              await deleteValueFor('user_email');
+              Alert.alert('Account Deleted', 'Your account has been successfully deleted.');
+              router.replace('/');
+            } catch (error) {
+              console.error('Unexpected error during account deletion:', error);
+              Alert.alert('Error', 'An unexpected error occurred during account deletion.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const cancelDeleteAccount = (): void => {
+    setDeleteModalVisible(false);
+  };
 
 
   return (
@@ -217,16 +275,16 @@ const handleChangePassword = async (): Promise<void> => {
             <Text style={styles.sectionHeader}>Change Password</Text>
             <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
               <Ionicons name="key-outline" size={20} color="#171223" />
-              <Text style={styles.buttonText}>   Change Password on Web</Text>
+              <Text style={styles.buttonText}>  Change Password on Web</Text>
             </TouchableOpacity>
           </View>
 
           {/* Export Data */}
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>Data Management</Text>
-            <TouchableOpacity style={styles.button} onPress={handleExportData}>
+            <TouchableOpacity style={styles.button} onPress={() => setExportModalVisible(true)}>
               <Ionicons name="cloud-download-outline" size={20} color="#171223" />
-              <Text style={styles.buttonText}>   Export My Data</Text>
+              <Text style={styles.buttonText}>  Export My Data</Text>
             </TouchableOpacity>
           </View>
 
@@ -235,15 +293,15 @@ const handleChangePassword = async (): Promise<void> => {
             <Text style={styles.sectionHeader}>Other Options</Text>
             <TouchableOpacity style={styles.button} onPress={handleLogOut}>
               <Ionicons name="log-out-outline" size={20} color="#171223" />
-              <Text style={styles.buttonText}>   Logout</Text>
+              <Text style={styles.buttonText}>  Logout</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDeleteAccount}>
               <Ionicons name="trash-outline" size={20} color="#fff" />
-              <Text style={[styles.buttonText, { color: '#fff' }]}>   Delete Account</Text>
+              <Text style={[styles.buttonText, { color: '#fff' }]}>  Delete Account</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Modal */}
+          {/* Delete Modal */}
           <Modal animationType="slide" transparent={true} visible={isDeleteModalVisible} onRequestClose={cancelDeleteAccount}>
             <View style={styles.centeredView}>
               <View style={styles.modalView}>
@@ -254,12 +312,53 @@ const handleChangePassword = async (): Promise<void> => {
                     <Text style={styles.buttonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={confirmDeleteAccount}>
-                    <Text style={styles.buttonText}>Delete</Text>
+                    <Text style={[styles.buttonText, {color: 'white'}]}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </Modal>
+
+          {/* Export Modal */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isExportModalVisible}
+            onRequestClose={() => setExportModalVisible(false)}
+          >
+            <View style={styles.centeredView}>
+              <View style={styles.modalView}>
+                <Text style={styles.modalText}>Export Data As</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="large" color="#0ac7b8" />
+                ) : (
+                  <>
+                    <View style={styles.modalButtonContainer}>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.exportFormatButton]}
+                        onPress={() => handleExportData('csv')}
+                      >
+                        <Text style={styles.buttonText}>CSV</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.exportFormatButton]}
+                        onPress={() => handleExportData('json')}
+                      >
+                        <Text style={styles.buttonText}>JSON</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.modalButtonCancel, { marginTop: 20, width: '100%' }]}
+                      onPress={() => setExportModalVisible(false)}
+                    >
+                      <Text style={styles.buttonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+          </Modal>
+
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -382,6 +481,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    width: '80%',
   },
   modalText: {
     marginBottom: 15,
@@ -414,7 +514,10 @@ const styles = StyleSheet.create({
   modalButtonConfirm: {
     backgroundColor: '#e74c3c', // Red for confirm delete
   },
-    avatarContainer: {
+  exportFormatButton: {
+    backgroundColor: '#0ac7b8',
+  },
+  avatarContainer: {
     alignItems: 'center',
     marginBottom: 20,
   },
