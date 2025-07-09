@@ -14,7 +14,7 @@ import DatePicker from 'react-native-modern-datepicker';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getValueFor } from '@/utils/secureStore';
 import { router } from 'expo-router';
-import { Feather, MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the aggregation icon
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the aggregation icon
 import ExpenseActionModal from '../components/ExpenseActionModal';
 import BudgetInputModal from '../components/BudgetInputModal';
 import IndividualExpensesModal from '../components/IndividualExpensesModal';
@@ -155,7 +155,10 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
       <View style={styles.header}>
         <Pressable onPress={() => setIsBudgetPickerModalVisible(true)}>
           <View>
+            <View style={{flexDirection:'row', gap:5, alignItems:'center', justifyContent:'center'}}>
             <Text style={styles.headerTitle}>Budget Remaining</Text>
+            <Ionicons name="information-circle-outline" size={18} color="#0ac7b8" />
+            </View>
             <Text
               style={[
                 styles.budgetInfoValue,
@@ -278,6 +281,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 50,
+    
   },
   header: {
     paddingHorizontal: 20,
@@ -354,7 +358,7 @@ const styles = StyleSheet.create({
     fontFamily: 'InterRegular',
   },
   listContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 5,
   },
   listHeader: {
     flexDirection: 'row',

@@ -1,7 +1,9 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressable, Button, Modal, BackHandler, Alert, ActivityIndicator } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getCategoriesForUser,
   addCategory,
@@ -46,7 +48,8 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
-  
+  const [lastTap, setLastTap] = useState<{ [key: number]: number }>({});
+  const [categoryInfoModalVisible, setCategoryInfoModalVisible] = useState(false);
   // Validation states
   const [amountError, setAmountError] = useState('');
   const [categoryError, setCategoryError] = useState('');
@@ -74,6 +77,10 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
       }
       if (profileModalVisible) {
         setProfileModalVisible(false);
+        return true;
+      }
+      if (categoryInfoModalVisible) {
+        setCategoryInfoModalVisible(false);
         return true;
       }
       return false;
@@ -132,17 +139,26 @@ async function ErrorPlaySound() {
   }, [sound]);
 
   useEffect(() => {
-    const getCategories = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getCategoriesForUser(userID);
-        setCategories(data);
-      } catch (error: any) {
-        Alert.alert('Error', error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        const getCategories = async () => {
+            if (!userID) return;
+            setIsLoading(true);
+            try {
+                const data = await getCategoriesForUser(userID);
+                const storedOrder = await AsyncStorage.getItem(`categoryOrder_${userID}`);
+                if (storedOrder) {
+                    const orderedIds = JSON.parse(storedOrder);
+                    const orderedCategories = orderedIds.map((id: number) => data.find(cat => cat.id === id)).filter(Boolean);
+                    const newCategories = data.filter(cat => !orderedIds.includes(cat.id));
+                    setCategories([...orderedCategories, ...newCategories]);
+                } else {
+                    setCategories(data);
+                }
+            } catch (error: any) {
+                Alert.alert('Error', error.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
     
     if (userID) {
       getCategories();
@@ -202,15 +218,20 @@ async function ErrorPlaySound() {
     }
 
     setIsAddingCategory(true);
-  try {
-    const data = await addCategory(newCategory.trim(), userID);
-    setCategories(prev => [...prev, ...data]);
-    setNewCategory('');
-  } catch (error: any) {
-    Alert.alert('Error', error.message);
-  } finally {
-      setIsAddingCategory(false);
-    }
+        try {
+            const data = await addCategory(newCategory.trim(), userID);
+            const updatedCategories = [...categories, ...data];
+            setCategories(updatedCategories);
+
+            const ids = updatedCategories.map(cat => cat.id);
+            await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(ids));
+
+            setNewCategory('');
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        } finally {
+            setIsAddingCategory(false);
+        }
   };
 
   const handleAddExpense = async () => {
@@ -270,62 +291,89 @@ async function ErrorPlaySound() {
     setIsBottomSheetOpen(false);
   };
 
-  const handleDeleteCategory = async () => {
-    if (categoryToDelete) {
-      Alert.alert(
-        'Delete Category',
-        `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await deleteExpensesByCategory(categoryToDelete.id);
-                await deleteCategory(categoryToDelete.id);
+    const handleDeleteCategory = async () => {
+        if (categoryToDelete) {
+            Alert.alert(
+                'Delete Category',
+                `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await deleteExpensesByCategory(categoryToDelete.id);
+                                await deleteCategory(categoryToDelete.id);
+                                const updatedCategories = categories.filter(category => category.id !== categoryToDelete.id);
+                                setCategories(updatedCategories);
 
-                setCategories(prev =>
-                  prev.filter(category => category.id !== categoryToDelete.id)
-                );
-                setCategoryToDelete(null);
-                setIsModalVisible(false);
-                Alert.alert('Success', 'Category deleted successfully');
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              } catch (error: any) {
-                Alert.alert('Error', error.message);
-              }
-            },
-          },
-        ]
-      );
-    }
-  };
+                                const updatedIds = updatedCategories.map(cat => cat.id);
+                                await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(updatedIds));
+
+                                setCategoryToDelete(null);
+                                setIsModalVisible(false);
+                                Alert.alert('Success', 'Category deleted successfully');
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            } catch (error: any) {
+                                Alert.alert('Error', error.message);
+                            }
+                        },
+                    },
+                ]
+            );
+        }
+    };
+
+    const handleDragEnd = useCallback(async ({ data }: { data: Category[] }) => {
+        setCategories(data);
+        const ids = data.map(cat => cat.id);
+        await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(ids));
+    }, [userID]);
 
 
-  const renderCategoryItem = ({ item }: { item: Category }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryPill,
-        selectedCategory === item.id && styles.selectedCategoryPill,
-      ]}
-      onPress={() => {
-        setSelectedCategory(item.id);
-        setSelectedCategoryName(item.name);
-        setCategoryError('');
-        Haptics.selectionAsync();
-      }}
-      onLongPress={() => {
-        setCategoryToDelete(item);
-        setIsModalVisible(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.categoryText}>{item.name}</Text>
+const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Category, drag: () => void, isActive: boolean }) => {
+    
+    const handleCategoryPress = () => {
+        const now = Date.now();
+        const DOUBLE_PRESS_DELAY = 300;
+        const itemLastTap = lastTap[item.id] || 0;
+        
+        if (itemLastTap && (now - itemLastTap) < DOUBLE_PRESS_DELAY) {
+            // Double tap detected - show delete confirmation
+            setCategoryToDelete(item);
+            setIsModalVisible(true);
+            // Reset the tap timing
+            setLastTap(prev => ({ ...prev, [item.id]: 0 }));
+        } else {
+            // Single tap - select category
+            setSelectedCategory(item.id);
+            setSelectedCategoryName(item.name);
+            setCategoryError('');
+            Haptics.selectionAsync();
+            // Record this tap time
+            setLastTap(prev => ({ ...prev, [item.id]: now }));
+        }
+    };
 
-    </TouchableOpacity>
-  );
+    return (
+        <ScaleDecorator>
+            <TouchableOpacity
+                style={[
+                    styles.categoryPill,
+                    selectedCategory === item.id && styles.selectedCategoryPill,
+                    isActive && { transform: [{ scale: 1.1 }], opacity: 0.8 },
+                ]}
+                onPress={handleCategoryPress}
+                onLongPress={drag}
+                disabled={isActive}
+                activeOpacity={0.7}
+            >
+                <Text style={styles.categoryText}>{item.name}</Text>
+            </TouchableOpacity>
+        </ScaleDecorator>
+    );
+}, [selectedCategory, lastTap]);
 
   const renderPaymentMethod = (method: string, icon: any) => (
     <TouchableOpacity 
@@ -377,6 +425,7 @@ async function ErrorPlaySound() {
   };
 
   const isFormValid = amount && selectedCategory && !amountError && !categoryError;
+
 
   return (
     <View style={styles.container}>
@@ -450,20 +499,28 @@ async function ErrorPlaySound() {
 
             {/* Categories */}
             <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>Category</Text>
+                <View style={styles.categoryHeaderWithInfo}>
+                    <Text style={styles.inputLabel}>Category</Text>
+                    <TouchableOpacity
+                        style={styles.infoButton}
+                        onPress={() => setCategoryInfoModalVisible(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="information-circle-outline" size={20} color="#0ac7b8" />
+                    </TouchableOpacity>
+                </View>
               {isLoading ? (
                 <ActivityIndicator color="#0ac7b8" size="small" style={styles.loadingIndicator} />
               ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScrollView}>
-                  <FlatList
-                    data={categories}
-                    renderItem={renderCategoryItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.categoryListContent}
+                  <DraggableFlatList
+                      data={categories}
+                      renderItem={renderCategoryItem}
+                      keyExtractor={(item) => item.id.toString()}
+                      onDragEnd={handleDragEnd}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.categoryListContent}
                   />
-                </ScrollView>
               )}
               {categoryError ? (
                 <Text style={styles.errorText}>{categoryError}</Text>
@@ -578,14 +635,15 @@ async function ErrorPlaySound() {
               <Ionicons name="person-circle" size={64} color="#0ac7b8" />
               <Text style={styles.profileTitle}>Account</Text>
             </View>
-                        {/* New "Manage Account" option */}
+                      
             <TouchableOpacity
-              style={styles.manageAccountButton} // You'll define this style
+              style={styles.manageAccountButton} 
               onPress={()=>router.push("/account")} 
             >
               <MaterialIcons name="settings" size={20} color="#333" />
               <Text style={styles.manageAccountButtonText}>Manage Account</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.logoutButton}
               onPress={handleLogOut}
@@ -612,6 +670,62 @@ async function ErrorPlaySound() {
           </View>
         </View>
       </Modal>
+
+      {/* Category Info modal */}
+       <Modal
+        visible={categoryInfoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setCategoryInfoModalVisible(false)}
+    >
+        <View style={styles.infoModalContainer}>
+            <View style={styles.infoModalContent}>
+                <TouchableOpacity
+                    style={styles.infoModalCloseButton}
+                    onPress={() => setCategoryInfoModalVisible(false)}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+                
+                <View style={styles.infoModalHeader}>
+                    <Ionicons name="information-circle" size={32} color="#0ac7b8" />
+                    <Text style={styles.infoModalTitle}>Category Instructions</Text>
+                </View>
+                
+                <View style={styles.instructionsList}>
+                    <View style={styles.instructionItem}>
+                        <Ionicons name="finger-print" size={20} color="#4CAF50" />
+                        <Text style={styles.instructionText}>
+                            <Text style={styles.instructionBold}>Single Tap:</Text> Select category
+                        </Text>
+                    </View>
+                    
+                    <View style={styles.instructionItem}>
+                        <Ionicons name="finger-print" size={20} color="#FF9800" />
+                        <Text style={styles.instructionText}>
+                            <Text style={styles.instructionBold}>Double Tap:</Text> Delete category
+                        </Text>
+                    </View>
+                    
+                    <View style={styles.instructionItem}>
+                        <Ionicons name="move" size={20} color="#2196F3" />
+                        <Text style={styles.instructionText}>
+                            <Text style={styles.instructionBold}>Long Press:</Text> Drag to reorder
+                        </Text>
+                    </View>
+                </View>
+                
+                <TouchableOpacity
+                    style={styles.infoModalGotItButton}
+                    onPress={() => setCategoryInfoModalVisible(false)}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.infoModalGotItText}>Got It!</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    </Modal>
     </View>
   );
 };
@@ -1003,4 +1117,76 @@ const styles = StyleSheet.create({
     fontSize: 17,
     letterSpacing: 2,
   },
+   categoryHeaderWithInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    infoButton: {
+        padding: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(10, 199, 184, 0.1)',
+    },
+    infoModalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    },
+    infoModalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 24,
+        width: '85%',
+        maxWidth: 350,
+    },
+    infoModalCloseButton: {
+        alignSelf: 'flex-end',
+        padding: 4,
+        marginBottom: 8,
+    },
+    infoModalHeader: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    infoModalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#333',
+        marginTop: 8,
+    },
+    instructionsList: {
+        marginBottom: 24,
+    },
+    instructionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    instructionText: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 12,
+        flex: 1,
+    },
+    instructionBold: {
+        fontWeight: '600',
+        color: '#333',
+    },
+    infoModalGotItButton: {
+        backgroundColor: '#0ac7b8',
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    infoModalGotItText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
