@@ -3,7 +3,6 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Pressabl
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getCategoriesForUser,
   addCategory,
@@ -11,7 +10,7 @@ import {
   deleteExpensesByCategory,
   deleteCategory,
 } from '../../utils/database';
-import { deleteValueFor } from '../../utils/secureStore'; 
+import { deleteValueFor,getValueFor,save } from '../../utils/secureStore'; 
 import { router } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import DatePicker from 'react-native-modern-datepicker';
@@ -144,7 +143,7 @@ async function ErrorPlaySound() {
             setIsLoading(true);
             try {
                 const data = await getCategoriesForUser(userID);
-                const storedOrder = await AsyncStorage.getItem(`categoryOrder_${userID}`);
+                const storedOrder = await getValueFor(`categoryOrder_${userID}`);
                 if (storedOrder) {
                     const orderedIds = JSON.parse(storedOrder);
                     const orderedCategories = orderedIds.map((id: number) => data.find(cat => cat.id === id)).filter(Boolean);
@@ -224,7 +223,7 @@ async function ErrorPlaySound() {
             setCategories(updatedCategories);
 
             const ids = updatedCategories.map(cat => cat.id);
-            await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(ids));
+            await save(`categoryOrder_${userID}`, JSON.stringify(ids));
 
             setNewCategory('');
         } catch (error: any) {
@@ -309,7 +308,7 @@ async function ErrorPlaySound() {
                                 setCategories(updatedCategories);
 
                                 const updatedIds = updatedCategories.map(cat => cat.id);
-                                await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(updatedIds));
+                                await save(`categoryOrder_${userID}`, JSON.stringify(updatedIds));
 
                                 setCategoryToDelete(null);
                                 setIsModalVisible(false);
@@ -328,7 +327,7 @@ async function ErrorPlaySound() {
     const handleDragEnd = useCallback(async ({ data }: { data: Category[] }) => {
         setCategories(data);
         const ids = data.map(cat => cat.id);
-        await AsyncStorage.setItem(`categoryOrder_${userID}`, JSON.stringify(ids));
+        await save(`categoryOrder_${userID}`, JSON.stringify(ids));
     }, [userID]);
 
 
