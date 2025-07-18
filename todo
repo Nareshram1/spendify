@@ -1,3 +1,5 @@
 refactor for database.ts for 
 
 edit/delete bug
+
+In home page the edit date picker make the cancel btn red it's confusing 
