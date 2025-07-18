@@ -202,7 +202,7 @@ const AnalyticsHome: React.FC<AnalyticsProp> = ({ refresh }) => {
               </Pressable>
               <Pressable
                 onPress={() => setIsDatePickerModalVisible(false)}
-                style={styles.modalCloseButton}
+                style={styles.modalCloseButtonOG}
               >
                 <Text style={styles.modalCloseButtonText}>Cancel</Text>
               </Pressable>
@@ -345,7 +345,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0ac7b8',
     padding: 12,
     borderRadius: 25,
-    marginTop: 10,
+    // marginTop: 10,
+    alignSelf: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  modalCloseButtonOG: {
+    backgroundColor: '#aaa',
+    padding: 12,
+    borderRadius: 25,
+    // marginTop: 10,
     alignSelf: 'center',
     flex: 1,
     marginHorizontal: 5,
