@@ -661,12 +661,23 @@ export const deleteTransaction = async (
  * Fetches expenses for a specific user.
  *
  * @param userID - The ID of the user whose expenses are to be fetched.
+ * @param startDate - The date from the date will be fetched.
+ * @param endDate - The date upto the data will be fetched.
  * @returns A Promise resolving to the fetched data or throwing an error.
  */
-export async function fetchUserExpenses(userID: string) {
+export async function fetchUserExpenses(userID: string, startDate: string, endDate: string) {
+  // --- Input Validation ---
   if (!userID) {
     throw new Error('Invalid or missing userID.');
   }
+  if (!startDate || !endDate) {
+    throw new Error('A valid start and end date must be provided.');
+  }
+
+  // --- Precise & Timezone-Safe Date Handling ---
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setDate(end.getDate() + 1);
 
   const { data, error } = await supabase
     .from('expenses')
@@ -675,9 +686,12 @@ export async function fetchUserExpenses(userID: string) {
       created_at,
       category:categories ( name )
     `)
-    .eq('user_id', userID);
+    .eq('user_id', userID)
+    .gte('created_at', start.toISOString()) // greater than or equal to the start
+    .lt('created_at', end.toISOString());   // LESS THAN the start of the next day
 
   if (error) {
+    console.error('Supabase query error:', error);
     throw error;
   }
 

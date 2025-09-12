@@ -74,7 +74,8 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID, refreshTrigger }) 
     isRefresh ? setRefreshing(true) : setLoading(true);
 
     try {
-      const data = await fetchUserExpenses(userID);
+      const { start, end } = getDateRangeForAPI();
+      const data = await fetchUserExpenses(userID, start, end);
 
       if (data) {
         const formattedData = formatData(data, period, date);
@@ -82,6 +83,8 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID, refreshTrigger }) 
         setIsPieData(formattedData.pieData.length > 0);
       } else {
         console.warn('No data returned from the query.');
+        setData({ pieData: [], totalSum: 0, lineData: { labels: [], datasets: [{ data: [] }] } });
+        setIsPieData(false);
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
