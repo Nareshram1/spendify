@@ -280,7 +280,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProp> = ({ userID, refreshTrigger }) 
     const groupedData: GroupedData = {};
 
     expenses.forEach((expense) => {
-      const expenseDate = new Date(expense.created_at);
+      const expenseDate = new Date(expense.expense_date);
       let key: string;
 
       switch (period) {

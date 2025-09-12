@@ -127,7 +127,7 @@ export async function syncLocalExpenses(): Promise<void> {
 export interface Expense {
   id: string;
   amount: number;
-  created_at: string;
+  expense_date: string;
   expense_method: string;
   category: string;
   category_id: string;
@@ -176,14 +176,14 @@ export class ExpenseService {
           `
           id,
           amount,
-          created_at,
+          expense_date,
           expense_method,
           category:categories (id, name) // Fetch category ID and name
         `
         )
         .eq('user_id', userID)
-        .gte('created_at', `${selectedDate}T00:00:00.000Z`)
-        .lt('created_at', `${selectedDate}T23:59:59.999Z`);
+        .gte('expense_date', `${selectedDate}T00:00:00.000Z`)
+        .lt('expense_date', `${selectedDate}T23:59:59.999Z`);
 
       if (error) {
         console.error('Error fetching expenses for the selected date:', error.message);
@@ -198,7 +198,7 @@ export class ExpenseService {
         const individualExpense: Expense = {
           id: item.id,
           amount: item.amount,
-          created_at: item.created_at,
+          expense_date: item.expense_date,
           expense_method: item.expense_method,
           category: categoryName,
           category_id: categoryId, // Store the actual category ID
@@ -252,8 +252,8 @@ export class ExpenseService {
         .from('expenses')
         .select('amount')
         .eq('user_id', userID)
-        .gte('created_at', startOfMonth)
-        .lt('created_at', endOfMonth);
+        .gte('expense_date', startOfMonth)
+        .lt('expense_date', endOfMonth);
 
       if (error) {
         console.error('Error fetching total expenses for the current month:', error.message);
@@ -328,8 +328,8 @@ export class ExpenseService {
       if (updatedData.amount !== undefined) updateObject.amount = updatedData.amount;
       if (updatedData.category_id !== undefined) updateObject.category_id = updatedData.category_id;
       if (updatedData.expense_method !== undefined) updateObject.expense_method = updatedData.expense_method;
-      if (updatedData.expense_date !== undefined) updateObject.created_at = updatedData.expense_date;
-
+      if (updatedData.expense_date !== undefined) updateObject.expense_date = updatedData.expense_date;
+      console.log('updateObject date:', updateObject.expense_date)
       const { data, error } = await supabase
         .from('expenses')
         .update(updateObject)
@@ -358,7 +358,7 @@ export class ExpenseService {
     amount: number;
     category_id: string;
     expense_method: string;
-    created_at?: string;
+    expense_date: string;
   }): Promise<Expense | null> {
     try {
       const { data, error } = await supabase
@@ -368,7 +368,7 @@ export class ExpenseService {
           amount: expenseData.amount,
           category_id: expenseData.category_id,
           expense_method: expenseData.expense_method,
-          created_at: expenseData.created_at || new Date().toISOString(),
+          expense_date: expenseData.expense_date || new Date().toISOString(),
         }])
         .select()
         .single();
@@ -683,12 +683,12 @@ export async function fetchUserExpenses(userID: string, startDate: string, endDa
     .from('expenses')
     .select(`
       amount,
-      created_at,
+      expense_date,
       category:categories ( name )
     `)
     .eq('user_id', userID)
-    .gte('created_at', start.toISOString()) // greater than or equal to the start
-    .lt('created_at', end.toISOString());   // LESS THAN the start of the next day
+    .gte('expense_date', start.toISOString()) // greater than or equal to the start
+    .lt('expense_date', end.toISOString());   // LESS THAN the start of the next day
 
   if (error) {
     console.error('Supabase query error:', error);

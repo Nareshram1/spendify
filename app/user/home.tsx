@@ -255,8 +255,8 @@ async function ErrorPlaySound() {
         category_id: selectedCategory,
         user_id: userID,
         expense_method: paymentMethod,
-        expense_date: isCustomDate ? `${date}T10:00:00.000Z` : date,
         created_at: isCustomDate ? `${date}T10:00:00.000Z` : date,
+        expense_date: isCustomDate ? `${date}T10:00:00.000Z` : date,
       };
 
       await addExpense(sendData);

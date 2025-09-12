@@ -105,7 +105,7 @@ const ExpenseActionModal: React.FC<ExpenseActionModalProps> = ({
         const cats = await getCategoriesForUser(userID);
         setCategories(cats);
 
-        const expenseDate = new Date(expense.created_at);
+        const expenseDate = new Date(expense.expense_date);
         const initialMonth = (expenseDate.getUTCMonth() + 1).toString();
         const initialYear = expenseDate.getUTCFullYear().toString();
         const initialDay = expenseDate.getUTCDate().toString();
@@ -170,7 +170,7 @@ const ExpenseActionModal: React.FC<ExpenseActionModalProps> = ({
         amount: parseFloat(formData.amount),
         category_id: formData.category_id,
         expense_method: formData.expense_method,
-        expense_date: newDate.toISOString(),
+        expense_date: new Date(Date.UTC(+formData.year, +formData.month - 1, +formData.day)),
       };
       await onUpdate(updatedExpense);
     } catch (err) {
@@ -208,7 +208,7 @@ const ExpenseActionModal: React.FC<ExpenseActionModalProps> = ({
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Date:</Text>
           <Text style={styles.detailValue}>
-            {new Date(expense?.created_at).toLocaleDateString('en-GB', {
+            {new Date(expense?.expense_date).toLocaleDateString('en-GB', {
               day: '2-digit',
               month: 'short',
               year: 'numeric',

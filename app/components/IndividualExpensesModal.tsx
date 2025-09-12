@@ -86,9 +86,9 @@ const IndividualExpensesModal: React.FC<IndividualExpensesModalProps> = ({
       amount: updatedExpense.amount,
       category_id: updatedExpense.category_id,
       expense_method: updatedExpense.expense_method,
-      expense_date: updatedExpense.created_at, // Use created_at or new date field if available
+      expense_date: updatedExpense.expense_date, 
     });
-
+    console.log("timestamp check",updatedExpense.expense_date)
     if (success) {
       // Update the local state with the modified expense
       setCurrentIndividualExpenses(prevExpenses =>
@@ -144,7 +144,7 @@ const IndividualExpensesModal: React.FC<IndividualExpensesModalProps> = ({
                   </View>
                   <View style={styles.itemDateContainer}>
                     <Text style={styles.itemDate}>
-                      {new Date(item.created_at).toLocaleDateString('en-GB', {
+                      {new Date(item.expense_date).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',

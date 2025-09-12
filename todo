@@ -2,4 +2,6 @@ refactor for database.ts for
 
 edit/delete bug
 
-In home page the edit date picker make the cancel btn red it's confusing 
+Whole is based on created_at but it should be expense_date
+
+Recurring expense automation
