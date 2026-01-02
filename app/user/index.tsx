@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Alert, TextInput,TouchableOpacity, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Alert, TextInput, TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import PagerView from 'react-native-pager-view';
 import LendingsAndBorrowingsPage from './lent';
-import {getValueFor, save } from '@/utils/secureStore';
+import { getValueFor, save } from '@/utils/secureStore';
 import { router } from 'expo-router';
 import AnalyticsPage from './analyticsPage';
 import { Audio } from 'expo-av';
@@ -15,6 +15,7 @@ import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Import the new utility functions
 import { fetchAndSaveCategories, loadStoredCategories, syncLocalExpenses } from '@/utils/database';
+import { processRecurringExpenses } from '@/utils/recurringExpenseProcessor';
 
 const MainPage = () => {
   const [sound, setSound] = useState();
@@ -26,24 +27,24 @@ const MainPage = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(false);
 
-async function BootPlaySound() {
-  // 1) Create the Sound object (but don’t start “stop” immediately).
-  const { sound } = await Audio.Sound.createAsync(
-    require('../../assets/audio/booting.mp3'),
-    { shouldPlay: true } // start playing as soon as it’s loaded
-  );
-  //@ts-ignore
-  setSound(sound); // so your cleanup-effect can still unload it if needed
-
-  // 2) Register a status-update listener. As soon as didJustFinish === true,
-  //    we unload the sound so it frees memory.
-  sound.setOnPlaybackStatusUpdate((status) => {
+  async function BootPlaySound() {
+    // 1) Create the Sound object (but don’t start “stop” immediately).
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/audio/booting.mp3'),
+      { shouldPlay: true } // start playing as soon as it’s loaded
+    );
     //@ts-ignore
-    if (status.didJustFinish) {
-      sound.unloadAsync();
-    }
-  });
-}
+    setSound(sound); // so your cleanup-effect can still unload it if needed
+
+    // 2) Register a status-update listener. As soon as didJustFinish === true,
+    //    we unload the sound so it frees memory.
+    sound.setOnPlaybackStatusUpdate((status) => {
+      //@ts-ignore
+      if (status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
+  }
 
 
   async function SuccessPlaySound() {
@@ -106,6 +107,17 @@ async function BootPlaySound() {
     // Refactored sync function using new utility
     const syncData = async () => {
       await syncLocalExpenses();
+
+      // Process recurring expenses when app starts
+      const storedUserId = await getValueFor('user_id');
+      if (storedUserId) {
+        try {
+          await processRecurringExpenses(storedUserId);
+        } catch (error) {
+          console.error('Error processing recurring expenses:', error);
+        }
+      }
+
       // await SuccessPlaySound();
       setRefresh(true);
     };
@@ -129,44 +141,44 @@ async function BootPlaySound() {
     <View style={styles.container}>
       <StatusBar backgroundColor='#171223' />
       {isOffline ? (
-      <PagerView
-        style={styles.container}
-        initialPage={1}
-        scrollEnabled={scroll}
-        onPageSelected={(e: { nativeEvent: { position: number } }) => {
-          const position = e.nativeEvent.position;
-          setCurrentPage(position);
+        <PagerView
+          style={styles.container}
+          initialPage={1}
+          scrollEnabled={scroll}
+          onPageSelected={(e: { nativeEvent: { position: number } }) => {
+            const position = e.nativeEvent.position;
+            setCurrentPage(position);
 
-          // If AnalyticsPage becomes visible (index 2), toggle refresh trigger
-          if (position === 2) {
-            setAnalyticsRefreshTrigger(prev => !prev);
-          }
-        }}
-      >
-        <LendingsAndBorrowingsPage userID={userID} />
-        <User userID={userID} toggleScroll={toggleScroll} />
-        <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
-      </PagerView>
+            // If AnalyticsPage becomes visible (index 2), toggle refresh trigger
+            if (position === 2) {
+              setAnalyticsRefreshTrigger(prev => !prev);
+            }
+          }}
+        >
+          <LendingsAndBorrowingsPage userID={userID} />
+          <User userID={userID} toggleScroll={toggleScroll} />
+          <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
+        </PagerView>
 
       ) : (
         refresh &&
-      <PagerView
-        style={styles.container}
-        initialPage={1}
-        scrollEnabled={scroll}
-        onPageSelected={(e: { nativeEvent: { position: number } }) => {
-          const position = e.nativeEvent.position;
-          setCurrentPage(position);
+        <PagerView
+          style={styles.container}
+          initialPage={1}
+          scrollEnabled={scroll}
+          onPageSelected={(e: { nativeEvent: { position: number } }) => {
+            const position = e.nativeEvent.position;
+            setCurrentPage(position);
 
-          if (position === 2) {
-            setAnalyticsRefreshTrigger(prev => !prev); // toggle to trigger refresh
-          }
-        }}
-      >
-        <LendingsAndBorrowingsPage userID={userID} />
-        <User userID={userID} toggleScroll={toggleScroll} />
-        <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
-      </PagerView>
+            if (position === 2) {
+              setAnalyticsRefreshTrigger(prev => !prev); // toggle to trigger refresh
+            }
+          }}
+        >
+          <LendingsAndBorrowingsPage userID={userID} />
+          <User userID={userID} toggleScroll={toggleScroll} />
+          <AnalyticsPage userID={userID} refreshTrigger={analyticsRefreshTrigger} />
+        </PagerView>
       )}
     </View>
   );
@@ -205,23 +217,23 @@ const OfflineUIShow = (categories: any) => {
   };
 
   return (
-    <View style={{backgroundColor:'#171223',minHeight:'100%',padding:5,paddingTop:30}}>
+    <View style={{ backgroundColor: '#171223', minHeight: '100%', padding: 5, paddingTop: 30 }}>
       <GestureHandlerRootView>
         <View style={styles.offlineBanner}>
           <MaterialIcons name="wifi-off" size={24} color="white" />
           <Text style={styles.offlineText}>Offline Expenses</Text>
-          <Pressable style={{marginHorizontal:150}} onPress={loadOfflineExpenses}>
-            <MaterialIcons name="refresh" size={24} color="white"  />
+          <Pressable style={{ marginHorizontal: 150 }} onPress={loadOfflineExpenses}>
+            <MaterialIcons name="refresh" size={24} color="white" />
           </Pressable>
         </View>
         <FlatList
           data={expenses}
           ListEmptyComponent={() => (
-            <View style={{alignItems: 'center', justifyContent: 'center', flex: 1, padding: 20}}>
-              <Text style={{color: 'white', fontSize: 18}}>No offline expenses saved</Text>
+            <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, padding: 20 }}>
+              <Text style={{ color: 'white', fontSize: 18 }}>No offline expenses saved</Text>
             </View>
           )}
-          keyExtractor={(item:any, index) => index.toString()}
+          keyExtractor={(item: any, index) => index.toString()}
           ListHeaderComponent={() => (
             expenses.length > 0 && (
               <View style={styles.listHeader}>
@@ -266,9 +278,9 @@ const OfflineUI = ({ categories, userID }) => {
     const istOffset = 5.5 * 60 * 60000;
     return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
   });
-  
+
   const handleSave = async () => {
-    try{
+    try {
       if (parseFloat(amount) <= 0 || !category) {
         Alert.alert(
           "Invalid Input",
@@ -277,7 +289,7 @@ const OfflineUI = ({ categories, userID }) => {
         );
         return;
       }
-  
+
       const expenseData = {
         expense_date: `${date}T10:00:00.000Z`,
         category_id: category,
@@ -285,7 +297,7 @@ const OfflineUI = ({ categories, userID }) => {
         expense_method: "upi",
         user_id: userID
       };
-      console.log('ed',expenseData);
+      console.log('ed', expenseData);
       const localData = await getValueFor('expense');
       const updatedData = localData ? JSON.parse(localData) : [];
       updatedData.push(expenseData);
@@ -311,7 +323,7 @@ const OfflineUI = ({ categories, userID }) => {
         {/* Main Content Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Add Offline Expense</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Category (Go online to add new)</Text>
             <View style={styles.pickerContainer}>
@@ -322,17 +334,17 @@ const OfflineUI = ({ categories, userID }) => {
                 mode="dropdown"
               >
                 <Picker.Item label="Select Category" value="" />
-                
+
                 {
                   //@ts-ignore
-                categories.map((cat) => (
-                  <Picker.Item 
-                    key={cat.id} 
-                    label={cat.name} 
-                    value={cat.id}
-                    color="#333"
-                  />
-                ))}
+                  categories.map((cat) => (
+                    <Picker.Item
+                      key={cat.id}
+                      label={cat.name}
+                      value={cat.id}
+                      color="#333"
+                    />
+                  ))}
               </Picker>
             </View>
 
@@ -347,7 +359,7 @@ const OfflineUI = ({ categories, userID }) => {
             />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.saveButton}
             onPress={handleSave}
           >
@@ -378,7 +390,7 @@ const styles = StyleSheet.create({
   offlineContainer: {
     flex: 1,
     padding: 16,
-    backgroundColor:'#171223'
+    backgroundColor: '#171223'
   },
   offlineBanner: {
     backgroundColor: '#ff6b6b',

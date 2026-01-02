@@ -5,3 +5,7 @@ edit/delete bug
 Whole is based on created_at but it should be expense_date
 
 Recurring expense automation
+
+in bottom sheet -> date format
+
+Upgrade SDK to latest

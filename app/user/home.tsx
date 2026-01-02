@@ -644,6 +644,14 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.manageAccountButton} 
+              onPress={()=>router.push("/automation")} 
+            >
+              <MaterialIcons name="refresh" size={20} color="#333" />
+              <Text style={styles.manageAccountButtonText}>Automation</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.logoutButton}
               onPress={handleLogOut}
             >
