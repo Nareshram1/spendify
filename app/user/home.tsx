@@ -10,7 +10,7 @@ import {
   deleteExpensesByCategory,
   deleteCategory,
 } from '../../utils/database';
-import { deleteValueFor,getValueFor,save } from '../../utils/secureStore'; 
+import { deleteValueFor, getValueFor, save } from '../../utils/secureStore';
 import { router } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import DatePicker from 'react-native-modern-datepicker';
@@ -52,14 +52,14 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
   // Validation states
   const [amountError, setAmountError] = useState('');
   const [categoryError, setCategoryError] = useState('');
-  
+
   const [date, setDate] = useState<string>(() => {
     const istOffset = 5.5 * 60 * 60000;
     return new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
   });
   const [openModal, setOpenModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('upi');
-  
+
   useEffect(() => {
     const backAction = () => {
       if (isBottomSheetOpen) {
@@ -105,60 +105,60 @@ const User: React.FC<UserPageProp> = ({ userID, toggleScroll }) => {
     });
   }
 
-async function ErrorPlaySound() {
-  try {
-    // 1) Create the Sound and start playing immediately
-    const { sound } = await Audio.Sound.createAsync(
-      require('../../assets/audio/error.mp3'),
-      { shouldPlay: true }
-    );
-    //@ts-ignore
-    setSound(sound);
-
-    // 2) Unload as soon as playback finishes
-    sound.setOnPlaybackStatusUpdate((status) => {
+  async function ErrorPlaySound() {
+    try {
+      // 1) Create the Sound and start playing immediately
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/audio/error.mp3'),
+        { shouldPlay: true }
+      );
       //@ts-ignore
-      if (status.didJustFinish) {
-        sound.unloadAsync();
-      }
-    });
-  } catch (error) {
-    console.log('Error playing error sound:', error);
+      setSound(sound);
+
+      // 2) Unload as soon as playback finishes
+      sound.setOnPlaybackStatusUpdate((status) => {
+        //@ts-ignore
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.log('Error playing error sound:', error);
+    }
   }
-}
 
 
   useEffect(() => {
     return sound
       ? () => {
-          //@ts-ignore
-          sound.unloadAsync();
-        }
+        //@ts-ignore
+        sound.unloadAsync();
+      }
       : undefined;
   }, [sound]);
 
   useEffect(() => {
-        const getCategories = async () => {
-            if (!userID) return;
-            setIsLoading(true);
-            try {
-                const data = await getCategoriesForUser(userID);
-                const storedOrder = await getValueFor(`categoryOrder_${userID}`);
-                if (storedOrder) {
-                    const orderedIds = JSON.parse(storedOrder);
-                    const orderedCategories = orderedIds.map((id: number) => data.find(cat => cat.id === id)).filter(Boolean);
-                    const newCategories = data.filter(cat => !orderedIds.includes(cat.id));
-                    setCategories([...orderedCategories, ...newCategories]);
-                } else {
-                    setCategories(data);
-                }
-            } catch (error: any) {
-                Alert.alert('Error', error.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-    
+    const getCategories = async () => {
+      if (!userID) return;
+      setIsLoading(true);
+      try {
+        const data = await getCategoriesForUser(userID);
+        const storedOrder = await getValueFor(`categoryOrder_${userID}`);
+        if (storedOrder) {
+          const orderedIds = JSON.parse(storedOrder);
+          const orderedCategories = orderedIds.map((id: number) => data.find(cat => cat.id === id)).filter(Boolean);
+          const newCategories = data.filter(cat => !orderedIds.includes(cat.id));
+          setCategories([...orderedCategories, ...newCategories]);
+        } else {
+          setCategories(data);
+        }
+      } catch (error: any) {
+        Alert.alert('Error', error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (userID) {
       getCategories();
     }
@@ -169,31 +169,34 @@ async function ErrorPlaySound() {
   }, [isBottomSheetOpen]);
 
   // Validation functions
-  const validateAmount = (value: string) => {
-    const numValue = parseFloat(value);
+  const validateAmount = (value: string): { isValid: boolean, value: number } => {
+    console.log('Validating amount:', value);
+    let numValue = 0;
+    value.split('+').forEach((item) => !isNaN(numValue += parseFloat(item)));
+    console.log('Parsed amount:', numValue);
     if (!value.trim()) {
       setAmountError('Amount is required');
-      return false;
+      return { isValid: false, value: numValue };
     }
     if (isNaN(numValue) || numValue <= 0) {
       setAmountError('Please enter a valid amount greater than 0');
-      return false;
+      return { isValid: false, value: numValue };
     }
     if (numValue > 1000000) {
       setAmountError('Amount seems too large. Please verify.');
-      return false;
+      return { isValid: false, value: numValue };
     }
     setAmountError('');
-    return true;
+    return { isValid: true, value: numValue };
   };
 
   const validateCategory = () => {
     if (!selectedCategory) {
       setCategoryError('Please select a category');
-      return false;
+      return { isValid: false, value: selectedCategory };
     }
     setCategoryError('');
-    return true;
+    return { isValid: true, value: selectedCategory };
   };
 
   const handleAddCategory = async () => {
@@ -207,76 +210,76 @@ async function ErrorPlaySound() {
       return;
     }
 
-    const existingCategory = categories.find(category => 
+    const existingCategory = categories.find(category =>
       category.name.toLowerCase() === newCategory.toLowerCase()
     );
-    
+
     if (existingCategory) {
       Alert.alert('Category Exists', 'This category already exists');
       return;
     }
 
     setIsAddingCategory(true);
-        try {
-            const data = await addCategory(newCategory.trim(), userID);
-            const updatedCategories = [...categories, ...data];
-            setCategories(updatedCategories);
+    try {
+      const data = await addCategory(newCategory.trim(), userID);
+      const updatedCategories = [...categories, ...data];
+      setCategories(updatedCategories);
 
-            const ids = updatedCategories.map(cat => cat.id);
-            await save(`categoryOrder_${userID}`, JSON.stringify(ids));
+      const ids = updatedCategories.map(cat => cat.id);
+      await save(`categoryOrder_${userID}`, JSON.stringify(ids));
 
-            setNewCategory('');
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
-        } finally {
-            setIsAddingCategory(false);
-        }
+      setNewCategory('');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsAddingCategory(false);
+    }
   };
 
   const handleAddExpense = async () => {
-    const isAmountValid = validateAmount(amount);
-    const isCategoryValid = validateCategory();
+    const { isValid, value } = validateAmount(amount);
+    const isCategoryValid = validateCategory();
 
-    if (!isAmountValid || !isCategoryValid) {
-      await ErrorPlaySound();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
+    if (!isValid || !isCategoryValid) {
+      await ErrorPlaySound();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
-    setIsAddingExpense(true);
-    try {
-      const istOffset = 5.5 * 60 * 60000;
-      const currentDate = new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
+    setIsAddingExpense(true);
+    try {
+      const istOffset = 5.5 * 60 * 60000;
+      const currentDate = new Date(new Date().getTime() + istOffset).toISOString().split('T')[0];
 
-      const isCustomDate = date !== currentDate;
+      const isCustomDate = date !== currentDate;
 
-      const sendData = {
-        amount: parseFloat(amount).toFixed(2),
-        category_id: selectedCategory,
-        user_id: userID,
-        expense_method: paymentMethod,
-        created_at: isCustomDate ? `${date}T10:00:00.000Z` : date,
-        expense_date: isCustomDate ? `${date}T10:00:00.000Z` : date,
-      };
+      const sendData = {
+        amount: value,
+        category_id: selectedCategory,
+        user_id: userID,
+        expense_method: paymentMethod,
+        created_at: isCustomDate ? `${date}T10:00:00.000Z` : date,
+        expense_date: isCustomDate ? `${date}T10:00:00.000Z` : date,
+      };
 
-      await addExpense(sendData);
+      await addExpense(sendData);
 
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      await SuccessPlaySound();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      await SuccessPlaySound();
 
-      setAmount('');
-      setSelectedCategory(null);
-      setSelectedCategoryName('');
-      setAmountError('');
-      setCategoryError('');
-      setRefreshAnalytics(!refreshAnalytics);
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-      await ErrorPlaySound();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setIsAddingExpense(false);
-    }
+      setAmount('');
+      setSelectedCategory(null);
+      setSelectedCategoryName('');
+      setAmountError('');
+      setCategoryError('');
+      setRefreshAnalytics(!refreshAnalytics);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+      await ErrorPlaySound();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsAddingExpense(false);
+    }
   };
 
 
@@ -290,92 +293,92 @@ async function ErrorPlaySound() {
     setIsBottomSheetOpen(false);
   };
 
-    const handleDeleteCategory = async () => {
-        if (categoryToDelete) {
-            Alert.alert(
-                'Delete Category',
-                `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: async () => {
-                            try {
-                                await deleteExpensesByCategory(categoryToDelete.id);
-                                await deleteCategory(categoryToDelete.id);
-                                const updatedCategories = categories.filter(category => category.id !== categoryToDelete.id);
-                                setCategories(updatedCategories);
+  const handleDeleteCategory = async () => {
+    if (categoryToDelete) {
+      Alert.alert(
+        'Delete Category',
+        `Are you sure you want to delete "${categoryToDelete.name}"? This will also delete all expenses in this category.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteExpensesByCategory(categoryToDelete.id);
+                await deleteCategory(categoryToDelete.id);
+                const updatedCategories = categories.filter(category => category.id !== categoryToDelete.id);
+                setCategories(updatedCategories);
 
-                                const updatedIds = updatedCategories.map(cat => cat.id);
-                                await save(`categoryOrder_${userID}`, JSON.stringify(updatedIds));
+                const updatedIds = updatedCategories.map(cat => cat.id);
+                await save(`categoryOrder_${userID}`, JSON.stringify(updatedIds));
 
-                                setCategoryToDelete(null);
-                                setIsModalVisible(false);
-                                Alert.alert('Success', 'Category deleted successfully');
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            } catch (error: any) {
-                                Alert.alert('Error', error.message);
-                            }
-                        },
-                    },
-                ]
-            );
-        }
-    };
+                setCategoryToDelete(null);
+                setIsModalVisible(false);
+                Alert.alert('Success', 'Category deleted successfully');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch (error: any) {
+                Alert.alert('Error', error.message);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
 
-    const handleDragEnd = useCallback(async ({ data }: { data: Category[] }) => {
-        setCategories(data);
-        const ids = data.map(cat => cat.id);
-        await save(`categoryOrder_${userID}`, JSON.stringify(ids));
-    }, [userID]);
+  const handleDragEnd = useCallback(async ({ data }: { data: Category[] }) => {
+    setCategories(data);
+    const ids = data.map(cat => cat.id);
+    await save(`categoryOrder_${userID}`, JSON.stringify(ids));
+  }, [userID]);
 
 
-const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Category, drag: () => void, isActive: boolean }) => {
-    
+  const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Category, drag: () => void, isActive: boolean }) => {
+
     const handleCategoryPress = () => {
-        const now = Date.now();
-        const DOUBLE_PRESS_DELAY = 300;
-        const itemLastTap = lastTap[item.id] || 0;
-        
-        if (itemLastTap && (now - itemLastTap) < DOUBLE_PRESS_DELAY) {
-            // Double tap detected - show delete confirmation
-            setCategoryToDelete(item);
-            setIsModalVisible(true);
-            // Reset the tap timing
-            setLastTap(prev => ({ ...prev, [item.id]: 0 }));
-        } else {
-            // Single tap - select category
-            setSelectedCategory(item.id);
-            setSelectedCategoryName(item.name);
-            setCategoryError('');
-            Haptics.selectionAsync();
-            // Record this tap time
-            setLastTap(prev => ({ ...prev, [item.id]: now }));
-        }
+      const now = Date.now();
+      const DOUBLE_PRESS_DELAY = 300;
+      const itemLastTap = lastTap[item.id] || 0;
+
+      if (itemLastTap && (now - itemLastTap) < DOUBLE_PRESS_DELAY) {
+        // Double tap detected - show delete confirmation
+        setCategoryToDelete(item);
+        setIsModalVisible(true);
+        // Reset the tap timing
+        setLastTap(prev => ({ ...prev, [item.id]: 0 }));
+      } else {
+        // Single tap - select category
+        setSelectedCategory(item.id);
+        setSelectedCategoryName(item.name);
+        setCategoryError('');
+        Haptics.selectionAsync();
+        // Record this tap time
+        setLastTap(prev => ({ ...prev, [item.id]: now }));
+      }
     };
 
     return (
-        <ScaleDecorator>
-            <TouchableOpacity
-                style={[
-                    styles.categoryPill,
-                    selectedCategory === item.id && styles.selectedCategoryPill,
-                    isActive && { transform: [{ scale: 1.1 }], opacity: 0.8 },
-                ]}
-                onPress={handleCategoryPress}
-                onLongPress={drag}
-                disabled={isActive}
-                activeOpacity={0.7}
-            >
-                <Text style={styles.categoryText}>{item.name}</Text>
-            </TouchableOpacity>
-        </ScaleDecorator>
+      <ScaleDecorator>
+        <TouchableOpacity
+          style={[
+            styles.categoryPill,
+            selectedCategory === item.id && styles.selectedCategoryPill,
+            isActive && { transform: [{ scale: 1.1 }], opacity: 0.8 },
+          ]}
+          onPress={handleCategoryPress}
+          onLongPress={drag}
+          disabled={isActive}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.categoryText}>{item.name}</Text>
+        </TouchableOpacity>
+      </ScaleDecorator>
     );
-}, [selectedCategory, lastTap]);
+  }, [selectedCategory, lastTap]);
 
   const renderPaymentMethod = (method: string, icon: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
         styles.paymentMethodButton,
         paymentMethod === method && styles.selectedPaymentMethod
@@ -386,10 +389,10 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
       }}
       activeOpacity={0.7}
     >
-      <Ionicons 
-        name={icon} 
-        size={24} 
-        color={paymentMethod === method ? '#fff' : '#888'} 
+      <Ionicons
+        name={icon}
+        size={24}
+        color={paymentMethod === method ? '#fff' : '#888'}
       />
       <Text style={[
         styles.paymentMethodText,
@@ -452,8 +455,8 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
           <View style={styles.bottomSheetContent}>
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.mainTextBS}>Add Expense - </Text>
-              <Pressable 
-                style={styles.dateButton} 
+              <Pressable
+                style={styles.dateButton}
                 onPress={() => setOpenModal(true)}
               >
                 <Feather name="calendar" size={20} color="white" />
@@ -473,7 +476,7 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
                   style={styles.amountInput}
                   placeholder="0.00"
                   placeholderTextColor="#666"
-                  keyboardType="numeric"
+                  keyboardType="phone-pad"
                   value={amount}
                   onChangeText={(text) => {
                     setAmount(text);
@@ -498,28 +501,28 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
 
             {/* Categories */}
             <View style={styles.inputSection}>
-                <View style={styles.categoryHeaderWithInfo}>
-                    <Text style={styles.inputLabel}>Category</Text>
-                    <TouchableOpacity
-                        style={styles.infoButton}
-                        onPress={() => setCategoryInfoModalVisible(true)}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="information-circle-outline" size={20} color="#0ac7b8" />
-                    </TouchableOpacity>
-                </View>
+              <View style={styles.categoryHeaderWithInfo}>
+                <Text style={styles.inputLabel}>Category</Text>
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={() => setCategoryInfoModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="information-circle-outline" size={20} color="#0ac7b8" />
+                </TouchableOpacity>
+              </View>
               {isLoading ? (
                 <ActivityIndicator color="#0ac7b8" size="small" style={styles.loadingIndicator} />
               ) : (
-                  <DraggableFlatList
-                      data={categories}
-                      renderItem={renderCategoryItem}
-                      keyExtractor={(item) => item.id.toString()}
-                      onDragEnd={handleDragEnd}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.categoryListContent}
-                  />
+                <DraggableFlatList
+                  data={categories}
+                  renderItem={renderCategoryItem}
+                  keyExtractor={(item) => item.id.toString()}
+                  onDragEnd={handleDragEnd}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryListContent}
+                />
               )}
               {categoryError ? (
                 <Text style={styles.errorText}>{categoryError}</Text>
@@ -536,11 +539,11 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
                 onChangeText={setNewCategory}
                 maxLength={20}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.addCategoryButton,
                   isAddingCategory && styles.buttonDisabled
-                ]} 
+                ]}
                 onPress={handleAddCategory}
                 disabled={isAddingCategory}
                 activeOpacity={0.7}
@@ -554,11 +557,11 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
             </View>
 
             {/* Add Expense Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.addExpenseButton,
                 !isFormValid && styles.addExpenseButtonDisabled
-              ]} 
+              ]}
               onPress={handleAddExpense}
               disabled={!isFormValid || isAddingExpense}
               activeOpacity={0.8}
@@ -623,29 +626,29 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Pressable 
-              onPress={() => setProfileModalVisible(false)} 
+            <Pressable
+              onPress={() => setProfileModalVisible(false)}
               style={styles.closeModalButton}
             >
               <Ionicons name="close" size={24} color="#666" />
             </Pressable>
-            
+
             <View style={styles.profileContent}>
               <Ionicons name="person-circle" size={64} color="#0ac7b8" />
               <Text style={styles.profileTitle}>Account</Text>
             </View>
-                      
+
             <TouchableOpacity
-              style={styles.manageAccountButton} 
-              onPress={()=>router.push("/account")} 
+              style={styles.manageAccountButton}
+              onPress={() => router.push("/account")}
             >
               <MaterialIcons name="settings" size={20} color="#333" />
               <Text style={styles.manageAccountButtonText}>Manage Account</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.manageAccountButton} 
-              onPress={()=>router.push("/automation")} 
+              style={styles.manageAccountButton}
+              onPress={() => router.push("/automation")}
             >
               <MaterialIcons name="refresh" size={20} color="#333" />
               <Text style={styles.manageAccountButtonText}>Automation</Text>
@@ -679,60 +682,60 @@ const renderCategoryItem = useCallback(({ item, drag, isActive }: { item: Catego
       </Modal>
 
       {/* Category Info modal */}
-       <Modal
+      <Modal
         visible={categoryInfoModalVisible}
         transparent={true}
         animationType="fade"
         onRequestClose={() => setCategoryInfoModalVisible(false)}
-    >
+      >
         <View style={styles.infoModalContainer}>
-            <View style={styles.infoModalContent}>
-                <TouchableOpacity
-                    style={styles.infoModalCloseButton}
-                    onPress={() => setCategoryInfoModalVisible(false)}
-                    activeOpacity={0.7}
-                >
-                    <Ionicons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-                
-                <View style={styles.infoModalHeader}>
-                    <Ionicons name="information-circle" size={32} color="#0ac7b8" />
-                    <Text style={styles.infoModalTitle}>Category Instructions</Text>
-                </View>
-                
-                <View style={styles.instructionsList}>
-                    <View style={styles.instructionItem}>
-                        <Ionicons name="finger-print" size={20} color="#4CAF50" />
-                        <Text style={styles.instructionText}>
-                            <Text style={styles.instructionBold}>Single Tap:</Text> Select category
-                        </Text>
-                    </View>
-                    
-                    <View style={styles.instructionItem}>
-                        <Ionicons name="finger-print" size={20} color="#FF9800" />
-                        <Text style={styles.instructionText}>
-                            <Text style={styles.instructionBold}>Double Tap:</Text> Delete category
-                        </Text>
-                    </View>
-                    
-                    <View style={styles.instructionItem}>
-                        <Ionicons name="move" size={20} color="#2196F3" />
-                        <Text style={styles.instructionText}>
-                            <Text style={styles.instructionBold}>Long Press:</Text> Drag to reorder
-                        </Text>
-                    </View>
-                </View>
-                
-                <TouchableOpacity
-                    style={styles.infoModalGotItButton}
-                    onPress={() => setCategoryInfoModalVisible(false)}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.infoModalGotItText}>Got It!</Text>
-                </TouchableOpacity>
+          <View style={styles.infoModalContent}>
+            <TouchableOpacity
+              style={styles.infoModalCloseButton}
+              onPress={() => setCategoryInfoModalVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <View style={styles.infoModalHeader}>
+              <Ionicons name="information-circle" size={32} color="#0ac7b8" />
+              <Text style={styles.infoModalTitle}>Category Instructions</Text>
             </View>
+
+            <View style={styles.instructionsList}>
+              <View style={styles.instructionItem}>
+                <Ionicons name="finger-print" size={20} color="#4CAF50" />
+                <Text style={styles.instructionText}>
+                  <Text style={styles.instructionBold}>Single Tap:</Text> Select category
+                </Text>
+              </View>
+
+              <View style={styles.instructionItem}>
+                <Ionicons name="finger-print" size={20} color="#FF9800" />
+                <Text style={styles.instructionText}>
+                  <Text style={styles.instructionBold}>Double Tap:</Text> Delete category
+                </Text>
+              </View>
+
+              <View style={styles.instructionItem}>
+                <Ionicons name="move" size={20} color="#2196F3" />
+                <Text style={styles.instructionText}>
+                  <Text style={styles.instructionBold}>Long Press:</Text> Drag to reorder
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.infoModalGotItButton}
+              onPress={() => setCategoryInfoModalVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.infoModalGotItText}>Got It!</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-    </Modal>
+      </Modal>
     </View>
   );
 };
@@ -1067,7 +1070,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 12,
   },
-   manageAccountButton: {
+  manageAccountButton: {
     backgroundColor: '#f0f0f0',
     borderRadius: 16,
     paddingVertical: 14,
@@ -1124,76 +1127,76 @@ const styles = StyleSheet.create({
     fontSize: 17,
     letterSpacing: 2,
   },
-   categoryHeaderWithInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    infoButton: {
-        padding: 4,
-        borderRadius: 12,
-        backgroundColor: 'rgba(10, 199, 184, 0.1)',
-    },
-    infoModalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    },
-    infoModalContent: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 24,
-        width: '85%',
-        maxWidth: 350,
-    },
-    infoModalCloseButton: {
-        alignSelf: 'flex-end',
-        padding: 4,
-        marginBottom: 8,
-    },
-    infoModalHeader: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    infoModalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#333',
-        marginTop: 8,
-    },
-    instructionsList: {
-        marginBottom: 24,
-    },
-    instructionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 12,
-        marginBottom: 8,
-    },
-    instructionText: {
-        fontSize: 14,
-        color: '#666',
-        marginLeft: 12,
-        flex: 1,
-    },
-    instructionBold: {
-        fontWeight: '600',
-        color: '#333',
-    },
-    infoModalGotItButton: {
-        backgroundColor: '#0ac7b8',
-        borderRadius: 12,
-        paddingVertical: 12,
-        alignItems: 'center',
-    },
-    infoModalGotItText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+  categoryHeaderWithInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 199, 184, 0.1)',
+  },
+  infoModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  infoModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 350,
+  },
+  infoModalCloseButton: {
+    alignSelf: 'flex-end',
+    padding: 4,
+    marginBottom: 8,
+  },
+  infoModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  infoModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
+  },
+  instructionsList: {
+    marginBottom: 24,
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 12,
+    flex: 1,
+  },
+  instructionBold: {
+    fontWeight: '600',
+    color: '#333',
+  },
+  infoModalGotItButton: {
+    backgroundColor: '#0ac7b8',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  infoModalGotItText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
